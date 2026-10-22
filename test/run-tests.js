@@ -3,9 +3,11 @@
 
 require('../assets/data.js');
 require('../assets/logic.js');
+require('../assets/ai-prompt.js');
 
 const D = globalThis.H30Data;
 const L = globalThis.H30Logic;
+const AI = globalThis.H30AI;
 
 let pass = 0;
 let fail = 0;
@@ -196,6 +198,40 @@ console.log('\n[8] 文本工具');
 {
   eq(L.formatTime(new Date(2026, 9, 22, 9, 5)), '2026-10-22 09:05', '时间格式化补零');
 }
+
+
+/* ------------------------------------------- AI 访谈官提示词与报告解析（v4） */
+(function aiPromptTests() {
+  const p = AI.buildSystemPrompt();
+
+  ok(p.includes('不超过 16 个问题'), '提示词含时间盒（≤16 问）');
+  ok(p.includes('角色锁定'), '提示词含角色锁定（防注入）');
+  ok(p.includes('无证据'), '提示词含「未知=无证据」汇总规则');
+  ok(p.includes('\`\`\`json'), '提示词含结构化契约标记');
+  ok(p.includes('访谈完成，我现在整理报告'), '提示词含结束语');
+  ok(p.includes('错位成长型'), '提示词注入 canonical 元类型词表');
+  ok(p.includes('反复回放的观察者'), '提示词注入 canonical 原型词表');
+  ok(p.length > 3000 && p.length < 8000, '提示词长度受控（' + p.length + ' 字）');
+  ok(AI.OPENING.indexOf('我们先从心智象限开始') > 0, '开场白固定且完整');
+
+  // 解析：拒收坏输入
+  ok(!AI.parseReport('这是一段普通回复').ok, '无 json 的回复被拒绝');
+  ok(!AI.parseReport('\`\`\`json\n{坏了\n\`\`\`').ok, '坏 json 被拒绝');
+  const partial = AI.parseReport('\`\`\`json\n' + JSON.stringify({ metatype: {} }) + '\n\`\`\`');
+  ok(!partial.ok, '缺字段的报告被拒绝');
+
+  // 解析：接受并规范化好输入
+  const raw = {
+    metatype: { name: '错位成长型' }, archetype: { name: '清醒的设计者' },
+    quadrants: [{ id: 'vocation' }, { id: 'mind' }, { id: 'body' }, { id: 'spirit' }],
+    crossDynamics: {}, coreProblem: {}, roadmap: {}, accelerator: {}, warnings: {}, finalFeedback: '反馈'
+  };
+  const r = AI.parseReport('访谈完成，我现在整理报告。\n\`\`\`json\n' + JSON.stringify(raw) + '\n\`\`\`');
+  ok(r.ok, '完整报告被接受');
+  ok(r.data.quadrants.map(q => q.id).join(',') === 'mind,body,spirit,vocation', '四象限被排序规范化');
+  ok(r.data.quadrants.every(q => q.level === 1 && q.phase === 'uncertainty'), '缺失字段有默认值');
+  ok(Array.isArray(r.data.quadrants[0].strengths), '数组成员被补齐');
+})();
 
 /* ---------------------------------------------------------- 汇总 */
 console.log('\n----------------------------------------');

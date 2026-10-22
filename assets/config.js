@@ -20,5 +20,11 @@ window.HUMAN30_CONFIG = {
 
   // 是否在访问码输入框下显示“演示用访问码”提示。
   // 自己测试流程时可以改成 true，正式分享给外部用户时建议保持 false。
-  SHOW_CODE_HINT: false
+  SHOW_CODE_HINT: false,
+
+  // 完成率计数器（GoatCounter，无 Cookie，只记页面流转，不记回答内容）。
+  // 留空则不加载任何统计脚本。用法：到 goatcounter.com 注册站点，
+  // 把站点地址填在这里，例如 'https://human30.goatcounter.com'。
+  // 加载范围仅限 AI 深聊版的三个屏幕。
+  GOATCOUNTER_URL: ''
 };

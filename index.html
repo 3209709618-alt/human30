@@ -51,6 +51,39 @@
       </aside>
     </div>
 
+    <!-- 两种方式 -->
+    <section class="section" id="tracks">
+      <div class="section-head">
+        <h2>两种打开方式</h2>
+        <p>同一条评估主线，两种深入程度。先选一条，随时可以回来换另一条。</p>
+      </div>
+      <div class="track-grid">
+        <div class="track-card">
+          <p class="tr-tag">不用账号 · 不用 Key</p>
+          <h3>免费体验版</h3>
+          <p class="tr-desc">32 道预设选择题，约 30 分钟。报告由预设规则生成，不调用任何 AI，回答不离开你的设备。</p>
+          <ul class="tr-list">
+            <li>四个维度一次走完</li>
+            <li>元类型与生活方式原型</li>
+            <li>每条建议都能追溯到具体选项</li>
+          </ul>
+          <button class="btn btn-primary btn-block" type="button" data-track="free">开始评估</button>
+        </div>
+        <div class="track-card">
+          <p class="tr-tag">需自备免费 API Key · 约 3 分钟注册</p>
+          <h3>AI 深聊版</h3>
+          <p class="tr-desc">AI 访谈官一次只问一个问题，根据你的回答决定是否追问，约 40 分钟。报告由 AI 生成，内容更深，但可能出错。</p>
+          <ul class="tr-list">
+            <li>访谈式对话，不是选择题</li>
+            <li>24 小时到 12 个月的行动路线</li>
+            <li>回答直连你选的服务商，我们不留存</li>
+          </ul>
+          <button class="btn btn-ghost btn-block" type="button" data-track="ai">进入 AI 深聊版</button>
+          <p class="tiny">没有 Key？智谱 AI 注册即免费可用，设置页有地址。</p>
+        </div>
+      </div>
+    </section>
+
     <!-- 痛点 -->
     <section class="section" id="signals">
       <div class="section-head">
@@ -192,18 +225,18 @@
     <!-- AI 说明 -->
     <section class="section" id="ai">
       <div class="section-head">
-        <h2>关于 AI</h2>
-        <p>当前版本是静态原型，先把流程跑通，AI 能力留在后面接入。</p>
+        <h2>关于 AI 深聊版</h2>
+        <p>免费体验版不调用任何 AI。AI 深聊版把访谈交给模型，规则和边界在这里说清楚。</p>
       </div>
       <div class="note-card">
-        <h3><span class="badge">未接入</span>现在的版本</h3>
-        <p>所有题目固定、分支固定，报告由预设规则生成。页面不会调用任何 AI 服务，也不会向任何服务器发送你的回答。</p>
+        <h3><span class="badge">已可用</span>AI 深聊版是怎么跑的</h3>
+        <p>你自备 API Key，访谈官由你选择的服务商提供（默认智谱 GLM-4-Flash，免费）。请求从你的浏览器直连服务商，我们不经过、不留存；对话记录只存在你这台设备的浏览器里。</p>
       </div>
       <div class="note-card" style="margin-top:12px">
-        <h3><span class="badge badge-soft">规划中</span>后续版本</h3>
-        <p>计划加入 AI 自适应追问：问题会根据你的回答变化，再据此生成报告。当前原型只展示这条流程的位置，不会伪装成 AI 已经工作。</p>
+        <h3><span class="badge badge-soft">要知道的</span>AI 报告的边界</h3>
+        <p>报告内容出自模型判断，可能出错、不完整，或把话说得过于确定。它同样不是心理、医疗或职业诊断。这个产品要求每个判断都能追溯到你的回答；如果拿不准，以免费体验版的结构化报告为准。</p>
       </div>
-      <p class="tiny">未来接入时，API Key 只会保存在后端服务器，不会写进网页代码、配置文件或 GitHub 仓库。</p>
+      <p class="tiny">API Key 只保存在你自己浏览器的本地存储里，不写进网页代码，也不发送给我们。更换设备或清除浏览器数据后需要重新填写。</p>
     </section>
 
     <!-- 边界说明 -->
@@ -336,6 +369,86 @@
       <p class="tiny">回答只保存在当前页面中。刷新、关闭页面或重新开始，都会清空它们。</p>
     </div>
   </section>
+  <!-- ============================================================ AI 设置 -->
+  <section class="screen" id="screen-ai-setup" hidden>
+    <div class="setup">
+      <p class="eyebrow">AI 深聊版 · 设置</p>
+      <h2>先连上你的模型</h2>
+      <p class="muted">选一家服务商，填上你的 API Key。Key 只保存在这台设备的浏览器里，请求从浏览器直连服务商，我们不经过、不留存。</p>
+
+      <div class="setup-block">
+        <h3><span class="n">1</span>选择服务商</h3>
+        <div class="ai-providers" id="aiProviderList"></div>
+      </div>
+
+      <div class="setup-block">
+        <h3><span class="n">2</span>接口与 Key</h3>
+        <div class="field">
+          <label for="aiBaseUrl">接口地址</label>
+          <input id="aiBaseUrl" type="text" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="aiModel">模型名</label>
+          <input id="aiModel" type="text" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="aiKey">API Key</label>
+          <input id="aiKey" type="password" spellcheck="false" autocomplete="off" placeholder="sk-...">
+        </div>
+        <p class="field-error" id="aiSetupErr" hidden></p>
+      </div>
+
+      <div class="ai-consent" id="aiConsentText"></div>
+
+      <div class="setup-actions" id="aiResumeRow" hidden>
+        <button class="btn btn-primary" id="aiResume" type="button">继续上次访谈</button>
+        <button class="btn btn-ghost" id="aiResumeReport" type="button" hidden>查看上次报告</button>
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn btn-ghost" id="aiSetupBack" type="button">返回</button>
+        <button class="btn btn-primary" id="aiSetupStart" type="button">开始访谈</button>
+      </div>
+      <p class="tiny">访谈约 40 分钟，最多 16 个问题。中途可以随时离开——对话记录存在本机浏览器里，重进页面会接着来。</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ AI 访谈 -->
+  <section class="screen" id="screen-ai-chat" hidden>
+    <div class="ai-chat">
+      <div class="ai-chat-head">
+        <button class="btn btn-ghost btn-sm" id="aiRestartChat" type="button">重新开始</button>
+        <p class="ai-chat-meta" id="aiChatMeta"></p>
+      </div>
+      <div class="ai-msg-list" id="aiMsgList"></div>
+      <div class="ai-err" id="aiChatErr" hidden></div>
+      <div class="ai-inputbar">
+        <textarea id="aiInput" rows="2" placeholder="用真实经历回答，不用理想中的自己回答……"></textarea>
+        <button class="btn btn-primary" id="aiSend" type="button">发送</button>
+      </div>
+      <div class="ai-finish-row">
+        <button class="btn btn-ghost" id="aiFinish" type="button">结束访谈并生成报告</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ AI 报告 -->
+  <section class="screen" id="screen-ai-report" hidden>
+    <div class="report">
+      <div class="report-head">
+        <p class="eyebrow">AI 深聊版 · 探索报告</p>
+        <h2>你的报告</h2>
+        <div class="report-meta" id="aiReportMeta"></div>
+        <p class="disclaimer">本报告由 AI 根据你的访谈回答生成，属于自我探索参考：它不是心理、医疗或职业诊断，也不是经过验证的客观测评。结论描述的是这段对话呈现的倾向，不是关于你的定论。理论框架参考 Dan Koe 的 HUMAN 3.0。</p>
+      </div>
+      <div id="aiReportBody"></div>
+      <div class="report-actions">
+        <button class="btn btn-primary" id="aiReportCopy" type="button">复制报告</button>
+        <button class="btn btn-ghost" id="aiReportRestart" type="button">再聊一轮</button>
+        <button class="btn btn-ghost" id="aiReportBack" type="button">返回首页</button>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer class="site-footer">
@@ -343,7 +456,7 @@
     <div>
       <h4>关于这个站</h4>
       <p>Human3.0人生评估是一个中文互动自我探索页面，用四个维度帮助你把“我现在在哪、正在经历什么”说清楚一点。</p>
-      <p>当前为免费静态原型，仅用于流程测试：不收款、不开通会员、不接入 AI、不上传任何回答。</p>
+      <p>当前为免费静态原型：不收款、不开通会员。免费体验版不接入 AI、不上传任何回答；AI 深聊版使用你自己的 Key 从浏览器直连模型服务商，我们不留存。</p>
       <p>结果仅供参考，不构成诊断、咨询或任何形式的专业建议。</p>
     </div>
     <div>
@@ -383,7 +496,9 @@
 
 <script src="assets/config.js"></script>
 <script src="assets/data.js"></script>
+<script src="assets/ai-prompt.js"></script>
 <script src="assets/logic.js"></script>
+<script src="assets/ai-chat.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

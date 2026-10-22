@@ -24,6 +24,7 @@
 
   var state = {
     unlocked: false,
+    afterGate: 'setup',
     dims: D.DIM_ORDER.slice(),
     answers: {},
     note: '',
@@ -84,7 +85,7 @@
 
   /* ------------------------------------------------------------- 路由 */
 
-  var SCREENS = ['landing', 'gate', 'setup', 'quiz', 'report'];
+  var SCREENS = ['landing', 'gate', 'setup', 'quiz', 'report', 'ai-setup', 'ai-chat', 'ai-report'];
 
   function go(name) {
     state.screen = name;
@@ -95,6 +96,7 @@
     document.body.classList.toggle('is-quiz', name === 'quiz');
     window.scrollTo(0, 0);
     updateChrome();
+    if (window.H30Chat) window.H30Chat.onScreen(name);
   }
 
   function updateChrome() {
@@ -128,7 +130,9 @@
 
   function renderGate() {
     var p = D.PLANS.complete;
-    $('gatePlanLabel').textContent = '完整版 · ' + p.minutes + '，共 32 道题。';
+    $('gatePlanLabel').textContent = state.afterGate === 'ai-setup'
+      ? 'AI 深聊版 · 约 40 分钟，最多 16 个问题。'
+      : '免费体验版 · ' + p.minutes + '，共 32 道题。';
     $('gateHint').textContent = CFG.SHOW_CODE_HINT
       ? '演示用访问码：' + CFG.ACCESS_CODE + '。这是纯前端演示，只能用于流程测试，不构成真实的付费权限或安全保护。'
       : '这是纯前端演示，访问码写在前端配置里，只能用于流程演示，不构成真实的付费权限或安全保护。';
@@ -148,8 +152,12 @@
       state.unlocked = true;
       $('gateError').hidden = true;
       $('gateField').classList.remove('has-error');
-      renderSetup();
-      go('setup');
+      if (state.afterGate === 'ai-setup') {
+        go('ai-setup');
+      } else {
+        renderSetup();
+        go('setup');
+      }
     } else {
       showGateError('访问码不正确，请向站点维护者确认。');
       $('gateInput').select();
@@ -560,6 +568,7 @@
     });
 
     $('heroStart').addEventListener('click', function () {
+      state.afterGate = 'setup';
       if (state.unlocked) {
         renderSetup();
         go('setup');
@@ -567,6 +576,19 @@
         renderGate();
         go('gate');
       }
+    });
+
+    document.querySelectorAll('[data-track]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state.afterGate = btn.getAttribute('data-track') === 'ai' ? 'ai-setup' : 'setup';
+        if (state.unlocked) {
+          if (state.afterGate === 'ai-setup') go('ai-setup');
+          else { renderSetup(); go('setup'); }
+        } else {
+          renderGate();
+          go('gate');
+        }
+      });
     });
 
     $('gateForm').addEventListener('submit', submitGate);
@@ -645,6 +667,7 @@
     var y = $('year');
     if (y) y.textContent = String(new Date().getFullYear());
 
+    if (window.H30Chat) window.H30Chat.init();
     canonicalizeUrl();
     bind();
     updateLanding();
@@ -656,4 +679,7 @@
   } else {
     init();
   }
+
+  // 供 ai-chat.js 调用的最小接口（切屏）
+  window.H30App = { go: go };
 })();

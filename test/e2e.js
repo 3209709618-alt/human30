@@ -262,6 +262,115 @@ async function enterCode(page, code) {
       await ctx.close();
     }
 
+
+    /* ------------------------------------------------ AI 深聊版（mocked API） */
+    {
+      console.log('\n[AI 深聊版] mocked 模型接口');
+      const { ctx, page } = await newPage(browser);
+      const reportJson = {
+        metatype: { name: '错位成长型', why: '四个象限不在同一水平线上。', strongest: 'mind', weakest: 'body', unique: '想法多、行动少。', basis: '第 1、3 轮回答' },
+        archetype: { name: '拆解问题的探索者', driver: '被问题驱动', mostEnergy: 'mind', sacrificed: 'body', problem: '身体被牺牲', fit: '基本符合' },
+        quadrants: ['mind', 'body', 'spirit', 'vocation'].map((id, i) => ({
+          id, level: i + 1, phase: 'uncertainty', evidence: '最近一个月还在调整。',
+          strengths: ['能反思'], gaps: ['缺重复行为'], fakeGrowth: '无',
+          crossImpact: '影响其他象限', priority: '先解决节奏', confidence: 'medium', uncertain: '压力下的表现未知'
+        })),
+        crossDynamics: { blocker: '身体', lever: '心智', rootCause: '身体', chainRisk: '全面下滑', hiddenPattern: '用思考代替行动' },
+        coreProblem: { quadrant: 'body', what: '没有稳定节奏', whyRoot: '其他问题都是它的症状', impact: '解决后精力回升', whyNow: '成本最低' },
+        roadmap: {
+          day1: '今晚十一点前放下手机。',
+          month1: { goal: '固定作息', daily: '十一点睡', weekly: '三次运动', crossSupport: '找人监督', successSignal: '连续七天', avoid: '一次全改' },
+          month3: { change: '生活有了底座', skill: '听身体说话', relapseGuard: '设最低线', support: '用心智规划身体', signal: '精力稳定' },
+          year1: { nextStage: '2.0', newProblem: '方向选择', interlock: '互相供给', lifestyle: '建造者' }
+        },
+        accelerator: { verdict: 'caution', missingBase: '稳定节奏', aiUse: '辅助不代劳', outsourcingRisk: '先自己写再对比', dependencySignals: '不思考就问' },
+        warnings: { regressionTrigger: '连续加班', fakeGrowthTrap: '囤课', chainRisk: '身体拖垮全部', selfDeception: '我在准备' },
+        finalFeedback: '你真正卡住的地方不是想不清楚，是身体撑不住你想的事。'
+      };
+      let calls = 0;
+      let failMode = false;
+      await page.route('**/v1/chat/completions', route => {
+        calls++;
+        if (failMode) {
+          route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: { message: 'invalid key' } }) });
+          return;
+        }
+        const body = route.request().postDataJSON();
+        const last = body.messages[body.messages.length - 1].content || '';
+        const isReport = last.includes('json');
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            choices: [{
+              message: {
+                role: 'assistant',
+                content: isReport
+                  ? '访谈完成，我现在整理报告。\n```json\n' + JSON.stringify(reportJson) + '\n```'
+                  : '能说说最近一次让你改变看法的事吗？'
+              }
+            }]
+          })
+        });
+      });
+
+      await page.click('[data-track="ai"]');
+      await enterCode(page, CODE);
+      ok(await page.isVisible('#screen-ai-setup'), 'AI 轨过访问码后进入设置屏');
+      await page.click('[data-pv="custom"]');
+      await page.fill('#aiBaseUrl', 'https://mock.test/v1');
+      await page.fill('#aiModel', 'mock-model');
+      await page.fill('#aiKey', 'sk-test-key-123');
+      ok((await page.textContent('#aiConsentText')).includes('自定义'), '同意书随服务商切换');
+      await page.click('#aiSetupStart');
+      ok(await page.isVisible('#screen-ai-chat'), '进入访谈屏');
+      ok((await page.textContent('#aiMsgList')).includes('欢迎开始'), '开场白本地渲染');
+      eq(calls, 0, '开场白不消耗接口调用');
+
+      await page.fill('#aiInput', '最近一次改变看法是开始跑步。');
+      await page.click('#aiSend');
+      await page.waitForFunction(() => document.querySelectorAll('.ai-row.ai').length >= 2, null, { timeout: 8000 });
+      eq(calls, 1, '发送后调用一次模型接口');
+      ok((await page.textContent('#aiMsgList')).includes('能说说最近一次'), '接口回复上屏');
+
+      // 刷新后能从设置屏继续上次访谈
+      await page.reload({ waitUntil: 'load' });
+      await page.click('[data-track="ai"]');
+      await enterCode(page, CODE);
+      ok(await page.isVisible('#screen-ai-setup'), '重新进入设置屏');
+      ok((await page.textContent('#aiResume')).includes('已聊 1 轮'), '显示继续上次入口');
+      await page.click('#aiResume');
+      ok((await page.textContent('#aiMsgList')).includes('开始跑步'), '刷新后对话恢复');
+
+      // 401 错误路径
+      failMode = true;
+      await page.fill('#aiInput', '继续说。');
+      await page.click('#aiSend');
+      await page.waitForSelector('#aiChatErr:not([hidden])', { timeout: 8000 });
+      ok((await page.textContent('#aiChatErr')).includes('401'), 'Key 失效有友好提示');
+      ok(await page.isVisible('#aiRetry'), '提供重试按钮');
+      failMode = false;
+
+      // 生成报告
+      await page.click('#aiFinish');
+      await page.waitForSelector('#screen-ai-report:not([hidden])', { timeout: 8000 });
+      eq(await page.locator('#aiReportBody .dim-report').count(), 4, 'AI 报告含四个象限卡');
+      ok((await page.textContent('#aiReportBody')).includes('错位成长型'), 'AI 报告含元类型');
+      ok((await page.textContent('#aiReportBody')).includes('行动路线'), 'AI 报告含行动路线');
+      ok((await page.textContent('#aiReportBody')).includes('关键警告'), 'AI 报告含关键警告');
+      ok((await page.textContent('#screen-ai-report')).includes('不是心理、医疗或职业诊断'), 'AI 报告带声明');
+      ok((await page.textContent('#screen-ai-report')).includes('Dan Koe'), 'AI 报告标注理论来源');
+
+      // 本地状态与再次查看
+      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('h30.ai.v1') || '{}'));
+      ok(stored.report && stored.messages.length > 2, '访谈状态写入 localStorage');
+      await page.click('#aiReportBack');
+      await page.click('[data-track="ai"]');
+      await page.click('#aiResumeReport');
+      ok(await page.isVisible('#screen-ai-report'), '可从设置屏查看上次报告');
+      await ctx.close();
+    }
+
   } finally {
     await browser.close();
     server.close();
