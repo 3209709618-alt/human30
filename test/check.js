@@ -59,6 +59,8 @@ const must = [
   ['理论来源链接 2', 'prompt-human-30-self-discovery-and'],
   ['Dan Koe 署名', 'Dan Koe'],
   ['非诊断声明', '不是诊断'],
+  ['三类诊断声明', '心理、医疗或职业诊断'],
+  ['非验证测评声明', '不是经过验证的客观测评'],
   ['四维：心智', '心智'],
   ['四维：身体', '身体'],
   ['四维：关系与意义', '关系与意义'],
@@ -70,6 +72,36 @@ must.forEach(([label, needle]) => {
   if (!html.includes(needle)) {
     problems++;
     console.log('  ✗ index.html 缺少：' + label);
+  }
+});
+
+// 规则引擎与交互层的必备措辞
+const logic = fs.readFileSync(path.join(ROOT, 'assets/logic.js'), 'utf8');
+const app = fs.readFileSync(path.join(ROOT, 'assets/app.js'), 'utf8');
+const mustInLogic = [
+  ['信息不足措辞', '目前信息不足，无法可靠判断'],
+  ['不补全声明', '不会被补全'],
+  ['理论来源', 'Dan Koe'],
+  ['跨维度议题', 'LINKAGE'],
+  ['跨维度建议', 'LEVERAGE']
+];
+mustInLogic.forEach(([label, needle]) => {
+  checks++;
+  if (!logic.includes(needle)) {
+    problems++;
+    console.log('  ✗ logic.js 缺少：' + label);
+  }
+});
+const mustInApp = [
+  ['笔记不参与判断说明', '不参与阶段判断'],
+  ['笔记原文展示', 'note-report'],
+  ['依据展开', 'basis']
+];
+mustInApp.forEach(([label, needle]) => {
+  checks++;
+  if (!app.includes(needle)) {
+    problems++;
+    console.log('  ✗ app.js 缺少：' + label);
   }
 });
 

@@ -1059,6 +1059,146 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
 }
 .report-ai strong { color: var(--ink-2); font-weight: 500; }
 
+/* 报告：维度建议、依据、跨维度、笔记 */
+.dim-qcount {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+
+.advice-box {
+  margin-top: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(232, 180, 115, 0.28);
+  border-radius: 12px;
+  background: rgba(232, 180, 115, 0.07);
+}
+.advice-box .r-label { margin-bottom: 6px; color: var(--accent); }
+.advice-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.basis { margin-top: 14px; }
+.basis summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+  list-style: none;
+}
+.basis summary::-webkit-details-marker { display: none; }
+.basis summary::before {
+  content: "＋ ";
+  color: var(--dim);
+}
+.basis[open] summary::before { content: "－ "; }
+.basis summary:hover { color: var(--ink-2); }
+.basis-q, .basis-a {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--dim);
+}
+.basis-a b { color: var(--ink-2); font-weight: 500; }
+
+.linkage-card {
+  margin-top: 12px;
+  padding: 20px;
+  border: 1px solid rgba(143, 184, 174, 0.3);
+  border-radius: var(--radius);
+  background: rgba(143, 184, 174, 0.06);
+}
+.linkage-card h3 { font-size: 18px; margin-bottom: 4px; }
+.linkage-pair {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--cool);
+}
+.linkage-read {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: var(--ink-2);
+}
+.linkage-q {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  line-height: 1.85;
+  color: var(--ink);
+}
+
+.priority { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.priority b { color: var(--ink); font-weight: 500; }
+.cross-text { margin: 0; font-size: 13.5px; line-height: 1.9; color: var(--ink-2); }
+
+.insufficient-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--dim); }
+
+.note-box {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+.note-box summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--muted);
+  list-style: none;
+}
+.note-box summary::-webkit-details-marker { display: none; }
+.note-box summary::before { content: "＋ "; color: var(--dim); }
+.note-box[open] summary::before { content: "－ "; }
+.note-box summary:hover { color: var(--ink-2); }
+.note-hint { margin: 10px 0 8px; font-size: 12px; line-height: 1.75; color: var(--dim); }
+.note-box textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.75;
+  resize: vertical;
+}
+.note-box textarea::placeholder { color: var(--dim); }
+.note-box textarea:focus {
+  outline: none;
+  border-color: rgba(232, 180, 115, 0.6);
+  box-shadow: 0 0 0 3px rgba(232, 180, 115, 0.1);
+}
+.note-count {
+  margin: 6px 0 0;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.note-report {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.02);
+}
+.note-report h3 { font-size: 15px; margin-bottom: 10px; color: var(--ink-2); }
+.note-text {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .report-actions {
   display: flex;
   flex-wrap: wrap;

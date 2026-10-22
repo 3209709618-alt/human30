@@ -146,8 +146,21 @@ async function answerStepAll(page, max) {
       ok((await page.textContent('#reportBody')).includes('生活方式原型'), '报告含生活方式原型');
       ok((await page.textContent('#reportBody')).includes('发展阶段'), '报告含发展阶段');
       ok((await page.textContent('#reportBody')).includes('转变阶段'), '报告含转变阶段');
-      ok((await page.textContent('#reportBody')).includes('未来两周可以先做的三件事'), '报告含行动建议');
       ok((await page.textContent('#reportMeta')).includes('8 道题'), '报告标明题量');
+
+      // 新报告结构：每维一条建议、判断依据、跨维度议题与建议
+      eq(await page.locator('#reportBody .advice-box').count(), 4, '每个维度一条建议');
+      eq(await page.locator('#reportBody .basis').count(), 4, '每个维度给出判断依据');
+      eq(await page.locator('#reportBody .linkage-card').count(), 1, '四维齐全时生成跨维度议题');
+      eq(await page.locator('#reportBody .actions-card').count(), 1, '四维齐全时生成跨维度建议');
+      ok((await page.textContent('#reportBody .linkage-card')).includes('可以带走的问题'), '跨维度议题包含核心问题');
+      ok((await page.textContent('.report-head .disclaimer')).includes('不是心理、医疗或职业诊断'), '报告声明覆盖三类诊断');
+      ok((await page.textContent('.report-head .disclaimer')).includes('Dan Koe'), '报告标注理论来源');
+
+      // 判断依据可以展开
+      ok(!(await page.locator('#reportBody .basis-a').first().isVisible()), '依据默认收起');
+      await page.locator('#reportBody .basis summary').first().click();
+      ok(await page.locator('#reportBody .basis-a').first().isVisible(), '展开后可见用户的具体选择');
 
       // 数字分数检查：报告中不应出现“得分/分数：数字”这类表述
       const bodyText = await page.textContent('#reportBody');
@@ -217,7 +230,12 @@ async function answerStepAll(page, max) {
       eq(await page.locator('#reportBody .dim-report').count(), 2, '部分维度只总结已探索维度');
       eq(await page.locator('#reportBody .type-grid').count(), 0, '部分维度不生成元类型');
       ok(await page.isVisible('#reportBody .insufficient'), '部分维度显示信息不足');
-      ok((await page.textContent('#reportBody .insufficient')).includes('信息不足'), '信息不足文案明确');
+      eq((await page.locator('#reportBody .insufficient h3').textContent()).trim(), '目前信息不足，无法可靠判断', '信息不足标题使用规定措辞');
+      ok((await page.textContent('#reportBody .insufficient')).includes('不会被补全'), '说明不会补全未作答维度');
+      eq(await page.locator('#reportBody .linkage-card').count(), 0, '部分维度不生成跨维度议题');
+      eq(await page.locator('#reportBody .actions-card').count(), 0, '部分维度不生成跨维度建议');
+      eq(await page.locator('#reportBody .advice-box').count(), 2, '每个已完成维度各一条建议');
+      eq(await page.locator('#reportBody .basis').count(), 2, '每个已完成维度各一条依据');
       ok(!(await page.textContent('#reportBody')).includes('思考先行型'), '部分维度不猜测整体类型');
       ok(!(await page.textContent('#reportBody')).includes('均衡探索型'), '部分维度不猜测整体类型');
 
@@ -246,6 +264,8 @@ async function answerStepAll(page, max) {
       ok(await page.isVisible('#screen-report'), '单维度也能生成报告');
       eq(await page.locator('#reportBody .dim-report').count(), 1, '报告只含一个维度');
       ok((await page.textContent('#reportBody')).includes('心智'), '报告含已探索维度');
+      eq(await page.locator('#reportBody .advice-box').count(), 1, '单维度也有一条建议');
+      eq(await page.locator('#reportBody .linkage-card').count(), 0, '单维度不生成跨维度议题');
       const heads = await page.locator('#reportBody .dim-report h3').allTextContents();
       ok(!heads.join('|').includes('职业与贡献'), '报告维度卡片不含未探索维度');
       ok(!heads.join('|').includes('身体'), '报告维度卡片不含未探索维度');
@@ -317,6 +337,37 @@ async function answerStepAll(page, max) {
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(overflow <= 1, '答题页无横向溢出（' + overflow + 'px）');
+      await ctx.close();
+    }
+
+    /* ---------------------------------------------------- 可选笔记 */
+    console.log('\n[笔记] 可选补充背景');
+    {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await ctx.newPage();
+      await page.goto(BASE + '?plan=quick', { waitUntil: 'load' });
+      await page.click('#heroStart');
+      await enterCode(page, CODE);
+      await page.click('#setupStart');
+
+      for (let i = 0; i < 7; i++) {
+        await page.locator('#stepView .opt').first().click();
+        await page.locator('[data-nav="next"]').click();
+      }
+      eq((await page.textContent('#quizCount')).trim(), '第 8 / 8 题', '到达最后一题');
+      ok(await page.isVisible('.note-box'), '最后一题提供可选笔记');
+      ok(!(await page.isVisible('#noteInput')), '笔记默认收起');
+
+      await page.click('.note-box summary');
+      await page.fill('#noteInput', '最近刚换工作，同时在照顾家人。');
+      ok((await page.textContent('#noteCount')).trim() !== '0', '字数统计随输入更新');
+
+      await page.locator('#stepView .opt').first().click();
+      await page.locator('[data-nav="next"]').click();
+      ok(await page.isVisible('#screen-report'), '填写笔记后仍能生成报告');
+      ok(await page.isVisible('#reportBody .note-report'), '报告展示补充背景');
+      ok((await page.textContent('#reportBody .note-report')).includes('最近刚换工作'), '笔记内容原样展示');
+      ok((await page.textContent('#reportBody .note-report')).includes('未参与'), '注明笔记不参与判断');
       await ctx.close();
     }
 

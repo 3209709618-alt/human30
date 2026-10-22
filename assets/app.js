@@ -27,6 +27,7 @@
     unlocked: false,
     dims: D.DIM_ORDER.slice(),
     answers: {},
+    note: '',
     questions: [],
     idx: 0,
     report: null,
@@ -377,6 +378,7 @@
         '<h3 class="q-text">' + esc(q.text) + '</h3>' +
         '<div class="opts" role="group" aria-label="选项">' + optionsHtml(q) + '</div>' +
         '<p class="q-hint">选择最接近你现在状态的一项，不用想太久。</p>' +
+        noteHtml(isLast) +
       '</div>' +
       '<div class="quiz-nav">' +
         '<button class="btn btn-ghost btn-sm" type="button" data-nav="prev"' + (state.idx === 0 ? ' disabled' : '') + '>上一题</button>' +
@@ -388,6 +390,19 @@
     $('quizFoot').innerHTML = '<span class="qf-info">' + esc(D.PLANS[state.plan].name) + ' · 已答 <b>' +
       answeredCount() + '</b> / ' + state.questions.length + '</span>' +
       '<button class="btn btn-ghost btn-sm" type="button" data-nav="back">返回设置</button>';
+  }
+
+  /* 最后一道题下方提供可选笔记；笔记不参与任何判断 */
+  function noteHtml(isLast) {
+    if (!isLast) return '';
+    return '<details class="note-box">' +
+      '<summary>补充背景（可选）</summary>' +
+      '<p class="note-hint">可以写下你的处境或想补充的信息。笔记不参与阶段判断、类型判断或报告计算，只会在报告里原样附上。</p>' +
+      '<textarea id="noteInput" maxlength="600" placeholder="例如：最近刚换了工作，同时在照顾家人，所以时间一直不够用……">' +
+        esc(state.note) +
+      '</textarea>' +
+      '<p class="note-count"><span id="noteCount">' + state.note.length + '</span> / 600</p>' +
+      '</details>';
   }
 
   function selectOption(btn) {
@@ -451,6 +466,8 @@
       plan: state.plan,
       dims: state.dims,
       answers: state.answers,
+      questions: state.questions,
+      note: state.note,
       now: new Date()
     });
     renderReport();
@@ -467,13 +484,14 @@
   }
 
   function dimCardHtml(row) {
-    return '<article class="dim-report">' +
+    var html = '<article class="dim-report">' +
       '<div class="dim-report-head">' +
         '<h3>' + esc(row.name) + '<span>' + esc(row.en) + '</span></h3>' +
+        '<span class="dim-qcount">' + row.questionCount + ' 题</span>' +
       '</div>' +
       '<div class="stage-row">' +
-        '<div class="stage-box"><p class="sb-k">发展阶段</p><p class="sb-v">' + esc(row.levelLabel) + '</p></div>' +
-        '<div class="stage-box"><p class="sb-k">转变阶段</p><p class="sb-v">' + esc(row.phaseLabel) + '</p></div>' +
+        '<div class="stage-box"><p class="sb-k">发展阶段 · 粗略定位</p><p class="sb-v">' + esc(row.levelLabel) + '</p></div>' +
+        '<div class="stage-box"><p class="sb-k">转变阶段 · 本次判断</p><p class="sb-v">' + esc(row.phaseLabel) + '</p></div>' +
       '</div>' +
       '<p class="summary">' + esc(row.levelSummary) + '</p>' +
       '<p class="summary">' + esc(row.phaseSummary) + '</p>' +
@@ -481,9 +499,32 @@
       '<ul class="r-list">' + row.strengths.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' +
       '<p class="r-label">值得关注</p>' +
       '<ul class="r-list watch">' + row.watch.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul>' +
-      '<p class="r-label">下一步</p>' +
-      '<ol class="r-list next">' + row.next.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
-      '</article>';
+      '<div class="advice-box">' +
+        '<p class="r-label">给你的建议</p>' +
+        '<p class="advice-text">' + esc(row.advice) + '</p>' +
+      '</div>';
+
+    if (row.basis) {
+      html += '<details class="basis">' +
+        '<summary>这条判断依据哪道题</summary>' +
+        '<p class="basis-q">第 ' + row.basis.index + ' 题：' + esc(row.basis.question) + '</p>' +
+        '<p class="basis-a">你的选择：<b>' + esc(row.basis.answer) + '</b></p>' +
+        '</details>';
+    }
+
+    return html + '</article>';
+  }
+
+  function linkageCard(l) {
+    return '<div class="linkage-card">' +
+      '<p class="tc-label">跨维度 · 核心议题</p>' +
+      '<h3>' + esc(l.title) + '</h3>' +
+      '<p class="linkage-pair">' +
+        (l.strong ? esc(l.strong) + ' 领先 · ' + esc(l.weak) + ' 靠后' : '四个维度发展接近') +
+      '</p>' +
+      '<p class="linkage-read">' + esc(l.read) + '</p>' +
+      '<p class="linkage-q">可以带走的问题：' + esc(l.question) + '</p>' +
+      '</div>';
   }
 
   function renderReport() {
@@ -493,7 +534,7 @@
     $('reportTitle').textContent = r.planName + ' · 探索报告';
     $('reportMeta').innerHTML =
       '<span>' + esc(L.formatTime(r.generatedAt)) + '</span>' +
-      '<span>探索维度：' + r.rows.map(function (x) { return esc(x.name); }).join('、') + '</span>' +
+      '<span>完成维度：' + r.rows.map(function (x) { return esc(x.name); }).join('、') + '</span>' +
       '<span>' + r.rows.length + ' 个维度 · ' + state.questions.length + ' 道题</span>';
 
     var html = '<p class="report-overview">' + esc(r.overview) + '</p>';
@@ -503,20 +544,29 @@
         typeCard('元类型', r.metatype.name, r.metatype.desc, '由四个维度的发展阶段组合得到，不涉及分数') +
         typeCard('生活方式原型', r.archetype.name, r.archetype.desc, r.archetype.basis) +
         '</div>';
+      html += linkageCard(r.linkage);
+      html += '<div class="actions-card">' +
+        '<h3>跨维度建议</h3>' +
+        (r.crossAdvice.priority ? '<p class="priority">优先处理：<b>' + esc(r.crossAdvice.priority) + '</b></p>' : '') +
+        '<p class="cross-text">' + esc(r.crossAdvice.text) + '</p>' +
+        '</div>';
     } else {
       html += '<div class="insufficient">' +
-        '<h3>整体类型信息不足</h3>' +
-        '<p>' + esc(r.missingNote) + '</p>' +
-        '<p style="margin-top:8px">补齐其余维度后重新答题，才会生成元类型与生活方式原型。</p>' +
+        '<h3>目前信息不足，无法可靠判断</h3>' +
+        '<p>' + esc(r.missingDetail) + '</p>' +
+        '<p class="insufficient-hint">补齐其余维度后重新答题，才会生成元类型、生活方式原型与跨维度分析。</p>' +
         '</div>';
     }
 
     r.rows.forEach(function (row) { html += dimCardHtml(row); });
 
-    html += '<div class="actions-card">' +
-      '<h3>未来两周可以先做的三件事</h3>' +
-      '<ol class="r-list next">' + r.actions.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
-      '</div>';
+    if (r.note) {
+      html += '<div class="note-report">' +
+        '<h3>你补充的背景</h3>' +
+        '<p class="note-text">' + esc(r.note) + '</p>' +
+        '<p class="tiny">以上是你自己写下的内容，未参与阶段判断、类型判断或报告计算。</p>' +
+        '</div>';
+    }
 
     html += '<div class="report-ai"><strong>关于 AI：</strong>' + esc(r.aiNote) +
       '<br>当前版本不会发送任何网络请求，回答也没有离开这台设备。</div>';
@@ -561,6 +611,7 @@
   function askRestart() {
     openModal('重新开始？', '当前所有回答会被清空，且无法恢复。', function () {
       state.answers = {};
+      state.note = '';
       state.report = null;
       state.questions = [];
       state.idx = 0;
@@ -628,6 +679,15 @@
       if (action === 'next') {
         if (state.idx === state.questions.length - 1) tryGenerate();
         else goStep(1);
+      }
+    });
+
+    // 可选笔记：只存内存，不参与任何判断
+    $('stepView').addEventListener('input', function (e) {
+      if (e.target && e.target.id === 'noteInput') {
+        state.note = e.target.value;
+        var count = $('noteCount');
+        if (count) count.textContent = String(state.note.length);
       }
     });
 
