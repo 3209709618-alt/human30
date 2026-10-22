@@ -473,7 +473,7 @@
     var r = state.report;
     if (!r) return;
 
-    $('reportTitle').textContent = r.planName + ' · 探索报告';
+    $('reportTitle').textContent = '你的探索报告';
     $('reportMeta').innerHTML =
       '<span>' + esc(L.formatTime(r.generatedAt)) + '</span>' +
       '<span>四个维度 · ' + state.questions.length + ' 道题</span>';

@@ -32,7 +32,6 @@
   <section class="screen" id="screen-landing">
     <div class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">免费原型 · 自我探索</p>
         <h1>Human<span class="num">3.0</span><br><span class="thin">人生评估</span></h1>
         <p class="lede">32 个问题，把「我现在卡在哪」说清楚。</p>
         <p class="hero-note">四个维度、约 30 分钟、一份可以带走的报告。不收集、不上传、不保存你的回答。</p>
@@ -157,11 +156,11 @@
       </div>
       <div class="steps">
         <div class="step">
-          <h4>发展阶段：1.0 → 3.0</h4>
+          <h3>发展阶段：1.0 → 3.0</h3>
           <p>1.0 主要依据外部标准生活；2.0 建立了自己的标准，但还在施工；3.0 能把生活当作整体，在不确定中持续校准。它是“你目前主要站在哪一层”，不是能力高低。</p>
         </div>
         <div class="step">
-          <h4>转变阶段：失调 → 不确定 → 发现</h4>
+          <h3>转变阶段：失调 → 不确定 → 发现</h3>
           <p>失调期是“知道不对但说不清”；不确定期是“旧的松动了、新的没长好”；发现期是“方向大致清楚，正在把它做深”。它描述的是变化的位置，不是好坏。</p>
         </div>
       </div>
@@ -175,19 +174,19 @@
       </div>
       <div class="steps">
         <div class="step">
-          <h4>输入访问码</h4>
+          <h3>输入访问码</h3>
           <p>访问码由站点维护者提供，输入后直接进入答题。</p>
         </div>
         <div class="step">
-          <h4>回答 32 道题</h4>
+          <h3>回答 32 道题</h3>
           <p>一次一道，选中自动进入下一题。答题卡标出已答与未答，点题号可以跳回去修改。</p>
         </div>
         <div class="step">
-          <h4>补充背景（可选）</h4>
+          <h3>补充背景（可选）</h3>
           <p>最后一题下方可以写下你的处境，方便回看时更有上下文；笔记不参与任何判断。</p>
         </div>
         <div class="step">
-          <h4>生成并复制报告</h4>
+          <h3>生成并复制报告</h3>
           <p>报告不显示分数，只给阶段、优势、值得关注的地方和一条具体建议，可以一键复制。</p>
         </div>
       </div>
@@ -246,15 +245,15 @@
       </div>
       <div class="steps">
         <div class="step">
-          <h4>它是参考，不是诊断</h4>
+          <h3>它是参考，不是诊断</h3>
           <p>结果来自一套自己编写的题目和预设规则，没有经过心理测量学验证，不能用于诊断、评估或任何正式决策。</p>
         </div>
         <div class="step">
-          <h4>它是原型，不是付费服务</h4>
+          <h3>它是原型，不是付费服务</h3>
           <p>当前版本不收款、不开通会员。访问码只是流程演示，写在前端代码里，任何人都能看到，不构成权限保护。</p>
         </div>
         <div class="step">
-          <h4>它不留数据</h4>
+          <h3>它不留数据</h3>
           <p>回答只存在于当前页面的内存中。刷新、关闭页面或点击“重新开始”，回答就会被清空，服务器上没有任何副本。</p>
         </div>
       </div>
@@ -265,7 +264,6 @@
   <section class="screen" id="screen-gate" hidden>
     <div class="gate-wrap">
       <div class="card">
-        <p class="eyebrow">访问验证</p>
         <h2>输入访问码</h2>
         <p class="muted" id="gatePlanLabel">完整版 · 约 30 分钟，共 32 道题。</p>
         <form id="gateForm" novalidate>
@@ -288,8 +286,8 @@
   <!-- ============================================================ 设置 -->
   <section class="screen" id="screen-setup" hidden>
     <div class="setup">
-      <p class="eyebrow" id="setupPlanLabel">完整版 · 约 30 分钟</p>
       <h2>准备好了就开始</h2>
+      <p class="setup-kicker" id="setupPlanLabel">免费体验版 · 约 30 分钟</p>
       <p class="muted" id="setupIntro">四个维度各 8 题，覆盖判断、作息、关系与职业方向。</p>
 
       <div class="setup-summary" id="setupSummary"></div>
@@ -355,8 +353,7 @@
   <section class="screen" id="screen-report" hidden>
     <div class="report">
       <div class="report-head">
-        <p class="eyebrow">探索报告</p>
-        <h2 id="reportTitle">你的报告</h2>
+        <h2 id="reportTitle">你的探索报告</h2>
         <div class="report-meta" id="reportMeta"></div>
         <p class="disclaimer">本报告基于 HUMAN 3.0 框架生成，属于自我探索参考：它不是心理、医疗或职业诊断，也不是经过验证的客观测评。结论描述的是这份回答呈现的倾向，不是关于你的定论。理论框架参考 Dan Koe 的 HUMAN 3.0。</p>
       </div>
@@ -372,7 +369,6 @@
   <!-- ============================================================ AI 设置 -->
   <section class="screen" id="screen-ai-setup" hidden>
     <div class="setup">
-      <p class="eyebrow">AI 深聊版 · 设置</p>
       <h2>先连上你的模型</h2>
       <p class="muted">选一家服务商，填上你的 API Key。Key 只保存在这台设备的浏览器里，请求从浏览器直连服务商，我们不经过、不留存。</p>
 
@@ -436,8 +432,7 @@
   <section class="screen" id="screen-ai-report" hidden>
     <div class="report">
       <div class="report-head">
-        <p class="eyebrow">AI 深聊版 · 探索报告</p>
-        <h2>你的报告</h2>
+        <h2>你的深聊报告</h2>
         <div class="report-meta" id="aiReportMeta"></div>
         <p class="disclaimer">本报告由 AI 根据你的访谈回答生成，属于自我探索参考：它不是心理、医疗或职业诊断，也不是经过验证的客观测评。结论描述的是这段对话呈现的倾向，不是关于你的定论。理论框架参考 Dan Koe 的 HUMAN 3.0。</p>
       </div>
@@ -488,7 +483,7 @@
 </div>
 
 <noscript>
-  <div style="max-width:720px;margin:40px auto;padding:0 20px;color:#f1ede6;font-family:sans-serif">
+  <div style="max-width:720px;margin:40px auto;padding:0 20px;color:#16171b;font-family:sans-serif">
     <h2>需要启用 JavaScript</h2>
     <p>这个页面的答题与报告生成都在浏览器本地完成，请启用 JavaScript 后重新打开。</p>
   </div>

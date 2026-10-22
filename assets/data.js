@@ -15,12 +15,12 @@
   var PLANS = {
     complete: {
       id: 'complete',
-      name: '完整版',
+      name: '免费体验版',
       minutes: '约 30 分钟',
       tagline: '四个维度、32 道题，一份完整的报告',
       desc: '四个维度各 8 题，覆盖判断、作息、关系与职业方向。',
       allowsDimensionChoice: false,
-      aiNote: '后续版本计划加入 AI 自适应追问，并由此生成报告；当前题目与分支全部固定，不会发出任何请求。'
+      aiNote: '本报告由预设规则生成，没有调用任何 AI，你的回答也没有离开这台设备。想和 AI 访谈官深聊 40 分钟？回到首页选「AI 深聊版」。'
     }
   };
 

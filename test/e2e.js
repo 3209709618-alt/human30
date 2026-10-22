@@ -81,7 +81,7 @@ async function enterCode(page, code) {
     {
       const { ctx, page, external } = await newPage(browser, '?plan=complete');
 
-      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '顶栏显示完整版');
+      eq((await page.textContent('#planPill')).trim(), '免费体验版 · 约 30 分钟', '顶栏显示完整版');
       eq((await page.textContent('#heroStart')).trim(), '开始评估', '主按钮为开始评估');
       ok(await page.locator('#planGrid').count() === 0, '首页不再有版本卡片');
       ok(!(await page.textContent('#screen-landing')).includes('快速版'), '首页不出现快速版');
@@ -187,12 +187,12 @@ async function enterCode(page, code) {
     console.log('\n[入口] 旧链接 ?plan=quick / ?plan=standard');
     {
       const { ctx, page } = await newPage(browser, '?plan=quick');
-      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '旧链接落到完整版');
+      eq((await page.textContent('#planPill')).trim(), '免费体验版 · 约 30 分钟', '旧链接落到完整版');
       ok(page.url().includes('plan=complete'), 'URL 自动规范为 plan=complete');
       await page.goto(BASE + '?plan=standard', { waitUntil: 'load' });
-      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '标准版旧链接也落到完整版');
+      eq((await page.textContent('#planPill')).trim(), '免费体验版 · 约 30 分钟', '标准版旧链接也落到完整版');
       await page.goto(BASE, { waitUntil: 'load' });
-      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '无参数同样进入完整版');
+      eq((await page.textContent('#planPill')).trim(), '免费体验版 · 约 30 分钟', '无参数同样进入完整版');
       ok(page.url().includes('plan=complete'), '无参数时补上 plan=complete');
       await ctx.close();
     }

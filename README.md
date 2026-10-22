@@ -31,8 +31,9 @@ AI 深聊版没有独立链接参数，从首页「两种打开方式」进入�
 │   ├── ai-prompt.js    访谈官系统提示词（六处加固）与报告 json 解析
 │   ├── ai-chat.js      AI 深聊版：设置 / 访谈 / 报告三屏交互
 │   ├── app.js          免费版交互与全局路由
-│   └── style.css       深色主题样式（移动端优先）
+│   └── style.css       液态玻璃主题样式（移动端优先）
 ├── GLOSSARY.md         领域语言（术语以此为准）
+├── DESIGN.md           视觉世界规则（v5 液态玻璃）
 ├── docs/adr/           结构决策记录（双轨 / 自带 Key / 本地存储等）
 ├── test/
 │   ├── run-tests.js    规则引擎自测（Node）
