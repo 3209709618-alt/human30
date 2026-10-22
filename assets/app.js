@@ -26,7 +26,6 @@
     plan: null,
     unlocked: false,
     dims: D.DIM_ORDER.slice(),
-    mode: 'step',
     answers: {},
     questions: [],
     idx: 0,
@@ -218,6 +217,7 @@
     var p = D.PLANS[state.plan];
     $('setupPlanLabel').textContent = p.name + ' · ' + p.minutes;
     $('setupIntro').textContent = p.desc;
+    $('setupTitle').textContent = p.allowsDimensionChoice ? '开始前，先选一下' : '准备好就开始';
     $('dimBlock').hidden = !p.allowsDimensionChoice;
 
     var wrap = $('dimChoices');
@@ -229,12 +229,7 @@
         '</button>';
     }).join('');
 
-    $('modeChoices').querySelectorAll('[data-mode]').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-mode') === state.mode));
-    });
-
     $('dimError').hidden = true;
-    $('modeStepNum').textContent = p.allowsDimensionChoice ? '2' : '1';
     updateSetupSummary();
   }
 
@@ -243,13 +238,12 @@
     var dims = p.allowsDimensionChoice ? state.dims : D.DIM_ORDER.slice();
     var qs = L.questionsFor(state.plan, dims);
     var answered = qs.filter(function (q) { return state.answers[q.id] !== undefined; }).length;
-    var modeText = state.mode === 'step' ? '逐题模式' : '分组填写';
 
     $('setupSummary').innerHTML =
       '<span>版本：<b>' + esc(p.name) + '</b></span>' +
       '<span>维度：<b>' + dims.length + ' 个</b></span>' +
       '<span>题量：<b>' + qs.length + ' 题</b></span>' +
-      '<span>方式：<b>' + modeText + '</b></span>' +
+      '<span>方式：<b>逐题模式</b></span>' +
       (answered > 0 ? '<span>已答：<b>' + answered + ' 题</b></span>' : '');
 
     $('setupStart').textContent = answered > 0 ? '继续答题' : '开始答题';
@@ -307,16 +301,9 @@
 
   function renderQuiz() {
     $('missingBanner').hidden = true;
-    $('stepView').hidden = state.mode !== 'step';
-    $('groupView').hidden = state.mode !== 'group';
-
-    if (state.mode === 'step') {
-      $('groupView').innerHTML = '';
-      renderStep();
-    } else {
-      $('stepView').innerHTML = '';
-      renderGroup();
-    }
+    $('quizMap').classList.remove('is-open');
+    $('mapToggle').setAttribute('aria-expanded', 'false');
+    renderStep();
     renderQuizMeta();
   }
 
@@ -324,20 +311,48 @@
     var total = state.questions.length;
     var done = answeredCount();
     var pct = total ? Math.round((done / total) * 100) : 0;
+    var q = state.questions[state.idx];
+    var dim = q ? dimById(q.dim) : null;
 
-    if (state.mode === 'step') {
-      var q = state.questions[state.idx];
-      var dim = q ? dimById(q.dim) : null;
-      $('quizDim').textContent = dim ? dim.name : '';
-      $('quizCount').textContent = '第 ' + (state.idx + 1) + ' / ' + total + ' 题';
-    } else {
-      $('quizDim').textContent = '分组填写';
-      $('quizCount').textContent = '已答 ' + done + ' / ' + total;
-    }
+    $('quizDim').textContent = dim ? dim.name : '';
+    $('quizCount').textContent = '第 ' + (state.idx + 1) + ' / ' + total + ' 题';
 
     $('progressBar').style.width = pct + '%';
     var bar = document.querySelector('.progress');
     if (bar) bar.setAttribute('aria-valuenow', String(pct));
+
+    var stat = '已答 ' + done + ' / ' + total;
+    $('mapStat').textContent = stat;
+    $('mapToggleInfo').textContent = stat;
+    renderMap();
+  }
+
+  /* 右侧答题卡：按维度分组，标出已答 / 未答 / 当前题，可点击跳转 */
+  function renderMap() {
+    var html = '';
+    D.DIM_ORDER.forEach(function (dimId) {
+      var items = [];
+      state.questions.forEach(function (q, i) {
+        if (q.dim === dimId) items.push({ q: q, i: i });
+      });
+      if (!items.length) return;
+
+      var dim = dimById(dimId);
+      var done = items.filter(function (x) { return state.answers[x.q.id] !== undefined; }).length;
+
+      html += '<div class="map-group">' +
+        '<p class="map-group-name">' + esc(dim.name) + '<span>' + done + '/' + items.length + '</span></p>' +
+        '<div class="map-nums">' +
+        items.map(function (x) {
+          var answered = state.answers[x.q.id] !== undefined;
+          var cls = 'map-num' + (answered ? ' is-done' : '') + (x.i === state.idx ? ' is-current' : '');
+          return '<button class="' + cls + '" type="button" data-jump="' + x.i + '" ' +
+            'aria-label="第 ' + (x.i + 1) + ' 题，' + (answered ? '已答' : '未答') + '"' +
+            (x.i === state.idx ? ' aria-current="true"' : '') + '>' + (x.i + 1) + '</button>';
+        }).join('') +
+        '</div></div>';
+    });
+    $('mapGroups').innerHTML = html;
   }
 
   function optionsHtml(q) {
@@ -375,115 +390,48 @@
       '<button class="btn btn-ghost btn-sm" type="button" data-nav="back">返回设置</button>';
   }
 
-  function renderGroup() {
-    var indexMap = {};
-    state.questions.forEach(function (q, i) { indexMap[q.id] = i; });
-
-    var html = '';
-    D.DIM_ORDER.forEach(function (dimId) {
-      var qs = state.questions.filter(function (q) { return q.dim === dimId; });
-      if (!qs.length) return;
-      var dim = dimById(dimId);
-      html += '<div class="group-dim-head"><h3>' + esc(dim.name) + '</h3><span>' + qs.length + ' 题</span></div>';
-      qs.forEach(function (q) {
-        html += '<div class="q-card" data-qid="' + q.id + '">' +
-          '<p class="q-index">' + (indexMap[q.id] + 1) + ' / ' + state.questions.length + '</p>' +
-          '<h4 class="q-text">' + esc(q.text) + '</h4>' +
-          '<div class="opts" role="group" aria-label="选项">' + optionsHtml(q) + '</div>' +
-          '</div>';
-      });
-    });
-
-    $('groupView').innerHTML = html;
-    renderGroupFoot();
-  }
-
-  function renderGroupFoot() {
-    var total = state.questions.length;
-    var done = answeredCount();
-    $('quizFoot').innerHTML =
-      '<span class="qf-info">已答 <b>' + done + '</b> / ' + total + ' 题' +
-        (done < total ? '，还有 ' + (total - done) + ' 题' : '，可以生成报告了') + '</span>' +
-      '<span class="qf-btns">' +
-        '<button class="btn btn-ghost btn-sm" type="button" data-nav="back">返回设置</button>' +
-        '<button class="btn btn-primary" type="button" data-nav="submit">生成报告</button>' +
-      '</span>';
-  }
-
   function selectOption(btn) {
     var q = state.questions[state.idx];
     var opt = q.options[Number(btn.getAttribute('data-opt'))];
     if (!opt) return;
     state.answers[q.id] = q.kind === 'level' ? Number(opt.v) : opt.v;
 
-    var group = btn.parentNode;
-    group.querySelectorAll('[data-opt]').forEach(function (b) {
+    btn.parentNode.querySelectorAll('[data-opt]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b === btn));
     });
 
-    $('quizFoot').querySelector('.qf-info').innerHTML = esc(D.PLANS[state.plan].name) +
-      ' · 已答 <b>' + answeredCount() + '</b> / ' + state.questions.length;
+    var info = $('quizFoot').querySelector('.qf-info');
+    if (info) {
+      info.innerHTML = esc(D.PLANS[state.plan].name) + ' · 已答 <b>' + answeredCount() + '</b> / ' + state.questions.length;
+    }
 
     var next = document.querySelector('[data-nav="next"]');
     if (next) next.disabled = false;
     renderQuizMeta();
   }
 
-  function selectOptionInGroup(btn) {
-    var card = btn.closest('.q-card');
-    var qid = card.getAttribute('data-qid');
-    var q = null;
-    state.questions.forEach(function (item) { if (item.id === qid) q = item; });
-    if (!q) return;
-    var opt = q.options[Number(btn.getAttribute('data-opt'))];
-    if (!opt) return;
-
-    state.answers[q.id] = q.kind === 'level' ? Number(opt.v) : opt.v;
-    card.querySelectorAll('[data-opt]').forEach(function (b) {
-      b.setAttribute('aria-pressed', String(b === btn));
-    });
-    card.classList.remove('is-missing');
-    $('missingBanner').hidden = true;
-    renderGroupFoot();
-    renderQuizMeta();
+  function goStep(delta) {
+    jumpTo(state.idx + delta);
   }
 
-  function goStep(delta) {
-    var next = state.idx + delta;
-    if (next < 0 || next >= state.questions.length) return;
-    state.idx = next;
+  function jumpTo(i) {
+    if (i < 0 || i >= state.questions.length) return;
+    state.idx = i;
     $('missingBanner').hidden = true;
+    $('quizMap').classList.remove('is-open');
+    $('mapToggle').setAttribute('aria-expanded', 'false');
     renderStep();
     renderQuizMeta();
     window.scrollTo(0, 0);
   }
 
   function showMissing(missing) {
-    var banner = $('missingBanner');
     var first = missing[0];
     var idx = state.questions.indexOf(first);
-
-    if (state.mode === 'step') {
-      state.idx = idx;
-      renderStep();
-      renderQuizMeta();
-      banner.textContent = '请先回答这一题，再生成报告。';
-      banner.hidden = false;
-      window.scrollTo(0, 0);
-      return;
-    }
-
-    banner.textContent = '还有 ' + missing.length + ' 道题没有回答，已标出位置。全部答完后才能生成报告。';
+    jumpTo(idx);
+    var banner = $('missingBanner');
+    banner.textContent = '还有 ' + missing.length + ' 题没有回答，已跳到第 ' + (idx + 1) + ' 题。全部答完后才能生成报告。';
     banner.hidden = false;
-
-    document.querySelectorAll('.q-card').forEach(function (c) { c.classList.remove('is-missing'); });
-    missing.forEach(function (q) {
-      var card = document.querySelector('.q-card[data-qid="' + q.id + '"]');
-      if (card) card.classList.add('is-missing');
-    });
-
-    var target = document.querySelector('.q-card[data-qid="' + first.id + '"]');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   function tryGenerate() {
@@ -617,7 +565,6 @@
       state.questions = [];
       state.idx = 0;
       state.dims = D.DIM_ORDER.slice();
-      state.mode = 'step';
       closeModal();
       renderSetup();
       go('setup');
@@ -668,16 +615,6 @@
       updateSetupSummary();
     });
 
-    $('modeChoices').addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-mode]');
-      if (!btn) return;
-      state.mode = btn.getAttribute('data-mode');
-      $('modeChoices').querySelectorAll('[data-mode]').forEach(function (b) {
-        b.setAttribute('aria-pressed', String(b === btn));
-      });
-      updateSetupSummary();
-    });
-
     $('setupBack').addEventListener('click', function () { go('landing'); });
     $('setupStart').addEventListener('click', startQuiz);
 
@@ -694,17 +631,22 @@
       }
     });
 
-    $('groupView').addEventListener('click', function (e) {
-      var opt = e.target.closest('[data-opt]');
-      if (opt) selectOptionInGroup(opt);
+    // 答题卡：点题号跳转
+    $('quizMap').addEventListener('click', function (e) {
+      var num = e.target.closest('[data-jump]');
+      if (num) jumpTo(Number(num.getAttribute('data-jump')));
+    });
+
+    // 手机端展开 / 收起答题卡
+    $('mapToggle').addEventListener('click', function () {
+      var open = $('quizMap').classList.toggle('is-open');
+      $('mapToggle').setAttribute('aria-expanded', String(open));
     });
 
     $('quizFoot').addEventListener('click', function (e) {
       var nav = e.target.closest('[data-nav]');
       if (!nav) return;
-      var action = nav.getAttribute('data-nav');
-      if (action === 'back') { renderSetup(); go('setup'); }
-      if (action === 'submit') tryGenerate();
+      if (nav.getAttribute('data-nav') === 'back') { renderSetup(); go('setup'); }
     });
 
     $('btnRestartTop').addEventListener('click', askRestart);

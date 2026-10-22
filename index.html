@@ -118,8 +118,8 @@
           <p>入口链接决定版本。标准版和完整版可以选全部四个维度，也可以只挑一个或几个重点维度深入。</p>
         </div>
         <div class="step">
-          <h4>选答题方式</h4>
-          <p>逐题模式一次只出现一道题，适合专注；分组模式按维度铺开所有题目，适合来回比较、随时修改。</p>
+          <h4>逐题作答，答题卡跳题</h4>
+          <p>一次只显示一道题，右侧答题卡标出已答与未答，点题号就能跳回去修改；手机上答题卡收在顶部，点一下展开。</p>
         </div>
         <div class="step">
           <h4>答完才能出报告</h4>
@@ -203,7 +203,7 @@
   <section class="screen" id="screen-setup" hidden>
     <div class="setup">
       <p class="eyebrow" id="setupPlanLabel">快速版</p>
-      <h2>开始前，先选一下</h2>
+      <h2 id="setupTitle">开始前，先选一下</h2>
       <p class="muted" id="setupIntro">全部四个维度，共 8 道题。</p>
 
       <div class="setup-block" id="dimBlock">
@@ -214,22 +214,8 @@
         <p class="field-error" id="dimError" hidden>请至少选择一个维度。</p>
       </div>
 
-      <div class="setup-block">
-        <h3><span class="n" id="modeStepNum">2</span>选择答题方式</h3>
-        <p>两种方式题目完全一样，只是呈现不同。答题过程中可以随时返回修改。</p>
-        <div class="mode-choices" id="modeChoices">
-          <button class="mode-choice" type="button" data-mode="step" aria-pressed="true">
-            <strong>逐题模式</strong>
-            <span>一次只显示一道题，选完再进入下一题，适合专注。</span>
-          </button>
-          <button class="mode-choice" type="button" data-mode="group" aria-pressed="false">
-            <strong>分组填写</strong>
-            <span>按维度铺开所有题目，随时上下浏览、回头修改。</span>
-          </button>
-        </div>
-      </div>
-
       <div class="setup-summary" id="setupSummary"></div>
+      <p class="tiny">答题方式为逐题模式：一次只显示一道题。右侧答题卡会标出已答与未答的题目，点题号可以随时跳回修改。</p>
 
       <div class="setup-actions">
         <button class="btn btn-ghost" id="setupBack" type="button">返回</button>
@@ -242,20 +228,43 @@
   <!-- ============================================================ 答题 -->
   <section class="screen" id="screen-quiz" hidden>
     <div class="quiz">
-      <div class="quiz-head">
-        <div class="quiz-meta">
-          <span class="qm-dim" id="quizDim">心智</span>
-          <span id="quizCount">第 1 / 8 题</span>
+      <div class="quiz-layout">
+        <div class="quiz-head">
+          <div class="quiz-meta">
+            <span class="qm-dim" id="quizDim">心智</span>
+            <span id="quizCount">第 1 / 8 题</span>
+          </div>
+          <div class="progress" role="progressbar" aria-label="答题进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <i id="progressBar"></i>
+          </div>
         </div>
-        <div class="progress" role="progressbar" aria-label="答题进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <i id="progressBar"></i>
-        </div>
-      </div>
 
-      <div id="stepView"></div>
-      <div id="groupView" class="group-view" hidden></div>
-      <div class="quiz-foot" id="quizFoot"></div>
-      <p class="missing-banner" id="missingBanner" hidden></p>
+        <div class="quiz-main">
+          <p class="missing-banner" id="missingBanner" hidden></p>
+          <div id="stepView"></div>
+          <div class="quiz-foot" id="quizFoot"></div>
+        </div>
+
+        <aside class="quiz-map" id="quizMap" aria-label="答题卡">
+          <button class="map-toggle" id="mapToggle" type="button" aria-expanded="false" aria-controls="mapBody">
+            <span class="mt-label">答题卡</span>
+            <span class="mt-info" id="mapToggleInfo">已答 0 / 8</span>
+            <span class="mt-arrow" aria-hidden="true"></span>
+          </button>
+          <div class="map-body" id="mapBody">
+            <div class="map-head">
+              <p class="map-title">答题卡</p>
+              <p class="map-stat" id="mapStat">已答 0 / 8</p>
+            </div>
+            <div class="map-groups" id="mapGroups"></div>
+            <div class="map-legend">
+              <span><i class="lg lg-done"></i>已答</span>
+              <span><i class="lg lg-cur"></i>当前</span>
+              <span><i class="lg lg-todo"></i>未答</span>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   </section>
 

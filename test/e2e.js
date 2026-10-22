@@ -109,11 +109,9 @@ async function answerStepAll(page, max) {
       ok(await page.isVisible('#screen-setup'), '正确访问码进入设置页');
       ok(!(await page.isVisible('#dimBlock')), '快速版不显示维度选择');
       ok((await page.textContent('#setupSummary')).includes('8 题'), '快速版题量为 8');
-
-      await page.click('[data-mode="group"]');
-      ok((await page.textContent('#setupSummary')).includes('分组填写'), '切换到分组填写');
-      await page.click('[data-mode="step"]');
-      ok((await page.textContent('#setupSummary')).includes('逐题模式'), '切回逐题模式');
+      ok((await page.textContent('#setupSummary')).includes('逐题模式'), '设置页标明逐题模式');
+      ok((await page.textContent('#setupTitle')).includes('准备好'), '快速版无需选择，标题相应调整');
+      ok(await page.locator('#modeChoices').count() === 0, '已移除答题方式选择');
 
       await page.click('#setupStart');
       ok(await page.isVisible('#screen-quiz'), '进入答题页');
@@ -121,8 +119,23 @@ async function answerStepAll(page, max) {
       ok(await page.locator('#stepView .opt').count() === 3, '每题 3 个选项');
       ok(await page.locator('[data-nav="next"]').isDisabled(), '未作答时“下一题”不可用');
 
+      // 右侧答题卡
+      eq(await page.locator('#quizMap .map-num').count(), 8, '答题卡显示 8 个题号');
+      eq(await page.locator('#quizMap .map-group').count(), 4, '答题卡按四个维度分组');
+      ok((await page.locator('#quizMap .map-num').nth(0).getAttribute('class')).includes('is-current'), '第 1 题标为当前题');
+      ok((await page.textContent('#mapStat')).includes('已答 0 / 8'), '答题卡初始进度');
+
+      await page.locator('#quizMap .map-num').nth(2).click();
+      eq((await page.textContent('#quizCount')).trim(), '第 3 / 8 题', '点题号可跳到第 3 题');
+      ok((await page.locator('#quizMap .map-num').nth(2).getAttribute('class')).includes('is-current'), '跳转后当前题高亮');
+
       await page.locator('#stepView .opt').first().click();
       ok(!(await page.locator('[data-nav="next"]').isDisabled()), '作答后“下一题”可用');
+      ok((await page.locator('#quizMap .map-num').nth(2).getAttribute('class')).includes('is-done'), '作答后题号标记为已答');
+      ok((await page.textContent('#mapStat')).includes('已答 1 / 8'), '答题卡进度随之更新');
+
+      await page.locator('#quizMap .map-num').nth(0).click();
+      eq((await page.textContent('#quizCount')).trim(), '第 1 / 8 题', '可跳回第 1 题修改');
 
       const answered = await answerStepAll(page, 20);
       ok(await page.isVisible('#screen-report'), '答完全部题目后生成报告');
@@ -161,7 +174,7 @@ async function answerStepAll(page, max) {
     }
 
     /* ------------------------------------------- 入口 2：标准版 + 重点维度 */
-    console.log('\n[入口] ?plan=standard（只选两个维度，分组填写）');
+    console.log('\n[入口] ?plan=standard（只选两个维度）');
     {
       const { ctx, page, external } = await newPage(browser, 'standard');
       eq((await page.textContent('#planPill')).trim(), '标准版 · 约 15 分钟', '顶栏显示标准版');
@@ -170,6 +183,7 @@ async function answerStepAll(page, max) {
       await page.click('#heroStart');
       await enterCode(page, CODE);
       ok(await page.isVisible('#dimBlock'), '标准版显示维度选择');
+      ok((await page.textContent('#setupTitle')).includes('先选'), '标准版标题提示先选择');
 
       await page.click('[data-dim="body"]');
       await page.click('[data-dim="vocation"]');
@@ -177,25 +191,28 @@ async function answerStepAll(page, max) {
       ok(summary.includes('2 个'), '可只选两个维度');
       ok(summary.includes('8 题'), '两维共 8 题');
 
-      await page.click('[data-mode="group"]');
       await page.click('#setupStart');
-      ok(await page.isVisible('#screen-quiz'), '进入分组填写');
-      eq(await page.locator('.q-card').count(), 8, '分组模式渲染 8 道题');
-      eq(await page.locator('.group-dim-head').count(), 2, '分组模式按维度分组');
+      ok(await page.isVisible('#screen-quiz'), '进入答题');
+      eq(await page.locator('#quizMap .map-num').count(), 8, '答题卡只显示所选维度的 8 题');
+      eq(await page.locator('#quizMap .map-group').count(), 2, '答题卡只显示两个维度');
 
-      await page.locator('[data-nav="submit"]').click();
+      // 跳到最后一题作答，前面留空，验证必答校验
+      await page.locator('#quizMap .map-num').nth(7).click();
+      eq((await page.textContent('#quizCount')).trim(), '第 8 / 8 题', '可跳到最后一题');
+      await page.locator('#stepView .opt').first().click();
+      await page.locator('[data-nav="next"]').click();
       ok(await page.isVisible('#missingBanner'), '未答完时提示必答');
-      ok((await page.textContent('#missingBanner')).includes('8 道题'), '提示未答数量');
+      ok((await page.textContent('#missingBanner')).includes('7 题'), '提示未答数量');
       ok(await page.isVisible('#screen-quiz'), '未答完不生成报告');
+      eq((await page.textContent('#quizCount')).trim(), '第 1 / 8 题', '自动跳到第一道未答题');
 
-      const cards = page.locator('.q-card');
-      const n = await cards.count();
-      for (let i = 0; i < n; i++) {
-        await cards.nth(i).locator('.opt').first().click();
+      // 补完剩余题目
+      for (let i = 0; i < 8; i++) {
+        if (await page.isVisible('#screen-report')) break;
+        await page.locator('#stepView .opt').nth(1).click();
+        await page.locator('[data-nav="next"]').click();
       }
-      ok((await page.textContent('#quizFoot')).includes('8 / 8'), '分组模式统计已答数量');
 
-      await page.locator('[data-nav="submit"]').click();
       ok(await page.isVisible('#screen-report'), '答完后生成报告');
       eq(await page.locator('#reportBody .dim-report').count(), 2, '部分维度只总结已探索维度');
       eq(await page.locator('#reportBody .type-grid').count(), 0, '部分维度不生成元类型');
@@ -273,6 +290,33 @@ async function answerStepAll(page, max) {
       // 移动端不出现横向滚动
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(overflow <= 1, '移动端无横向溢出（' + overflow + 'px）');
+      await ctx.close();
+    }
+
+    /* ------------------------------------------------ 手机端答题卡折叠 */
+    console.log('\n[移动端] 答题卡展开与跳题');
+    {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+      const page = await ctx.newPage();
+      await page.goto(BASE + '?plan=quick', { waitUntil: 'load' });
+      await page.click('#heroStart');
+      await enterCode(page, CODE);
+      await page.click('#setupStart');
+
+      ok(await page.isVisible('#mapToggle'), '手机端显示答题卡折叠按钮');
+      ok(!(await page.isVisible('#mapBody')), '手机端答题卡默认收起');
+      ok((await page.textContent('#mapToggleInfo')).includes('已答 0 / 8'), '折叠按钮显示进度');
+
+      await page.click('#mapToggle');
+      ok(await page.isVisible('#mapBody'), '点击后展开答题卡');
+      eq(await page.locator('#quizMap .map-num').count(), 8, '展开后可见 8 个题号');
+
+      await page.locator('#quizMap .map-num').nth(4).click();
+      ok(await page.isHidden('#mapBody'), '跳题后自动收起');
+      eq((await page.textContent('#quizCount')).trim(), '第 5 / 8 题', '手机端也能点题号跳转');
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok(overflow <= 1, '答题页无横向溢出（' + overflow + 'px）');
       await ctx.close();
     }
 

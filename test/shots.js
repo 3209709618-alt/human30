@@ -11,7 +11,7 @@ const OUT = path.resolve(ROOT, '..', '.preview');
 const PORT = 8902;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
 const CFG_SRC = fs.readFileSync(path.join(ROOT, 'assets/config.js'), 'utf8');
-const CODE = (CFG_SRC.match(/ACCESS_CODE:////s*'([^']+)'/) || [])[1] || 'han0220';
+const CODE = (CFG_SRC.match(/ACCESS_CODE:\s*'([^']+)'/) || [])[1] || 'han0220';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8' };
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -73,15 +73,15 @@ const server = http.createServer((req, res) => {
   await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(OUT, '09-quiz-selected.png') });
 
-  // 分组模式
-  await page.click('#quizFoot [data-nav="back"]');
-  await page.click('[data-mode="group"]');
-  await page.click('#setupStart');
+  // 答题卡跳题
+  await page.locator('#quizMap .map-num').nth(5).click();
   await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, '10-quiz-group.png') });
-  await page.locator('[data-nav="submit"]').click();
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(OUT, '11-missing.png') });
+  await page.screenshot({ path: path.join(OUT, '10-quiz-map-jump.png') });
+  await page.locator('#stepView .opt').nth(0).click();
+  await page.waitForTimeout(200);
+  await page.locator('[data-nav="next"]').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUT, '11-quiz-map-progress.png') });
 
   // 快速版报告
   const p2 = await desktop.newPage();
@@ -152,18 +152,18 @@ const server = http.createServer((req, res) => {
   await m.waitForTimeout(300);
   await m.screenshot({ path: path.join(OUT, '27-m-report-dim.png') });
 
-  // 分组模式（桌面，检查底部工具条）
-  const g = await desktop.newPage();
+  // 手机端答题卡展开
+  const g = await mobile.newPage();
   await g.goto(BASE + '?plan=quick', { waitUntil: 'load' });
   await g.click('#heroStart');
   await g.fill('#gateInput', CODE);
   await g.click('#gateForm button[type="submit"]');
-  await g.click('[data-mode="group"]');
   await g.click('#setupStart');
   await g.waitForTimeout(300);
-  await g.evaluate(() => window.scrollBy(0, 500));
+  await g.screenshot({ path: path.join(OUT, '28-m-map-collapsed.png') });
+  await g.click('#mapToggle');
   await g.waitForTimeout(300);
-  await g.screenshot({ path: path.join(OUT, '28-group-scrolled.png') });
+  await g.screenshot({ path: path.join(OUT, '29-m-map-open.png') });
 
   await browser.close();
   server.close();
