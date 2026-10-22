@@ -2000,3 +2000,11 @@ body::after {
 /* FAQ 容器留出顶部呼吸 */
 .faq { padding-top: 4px; }
 .faq-item:first-child summary { padding-top: 20px; }
+
+/* 修复：玻璃嵌套（setup-block 内还有玻璃卡片）在 Chrome 下渲染出黑带。
+ * 按「玻璃只做层」原则：内容容器退回高通透白 + 发丝边，不做 backdrop-filter。 */
+.setup-block {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
