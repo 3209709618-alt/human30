@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Human3.0人生评估 · 基于 HUMAN 3.0 的自我探索</title>
+<meta name="description" content="基于 HUMAN 3.0 框架的中文互动自我探索：从心智、身体、关系与意义、职业与贡献四个维度，看清自己所在的发展阶段与转变阶段。静态原型，不上传、不保存回答。">
+<meta name="theme-color" content="#08080a">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="Human3.0人生评估">
+<meta property="og:description" content="用四个维度，看清自己现在站在哪里、正在经历什么样的转变。">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230d0e11'/%3E%3Ctext x='32' y='43' font-family='Georgia,serif' font-size='27' fill='%23e8b473' text-anchor='middle'%3EH3%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true"></div>
+
+<header class="topbar">
+  <a class="brand" href="./" id="brandHome">
+    <span class="brand-mark" aria-hidden="true">H3</span>
+    <span class="brand-text">Human3.0人生评估</span>
+  </a>
+  <div class="topbar-actions">
+    <span class="plan-pill" id="planPill" hidden></span>
+    <button class="btn btn-ghost btn-sm" id="btnRestartTop" type="button" hidden>重新开始</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============================================================ 首页 -->
+  <section class="screen" id="screen-landing">
+    <div class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">免费原型 · 自我探索</p>
+        <h1>Human<span class="num">3.0</span><br><span class="thin">人生评估</span></h1>
+        <p class="lede">用四个维度，看清自己现在站在哪里、正在经历什么样的转变。</p>
+        <p class="hero-note">这是一个静态原型：不收集、不上传、不保存你的回答。报告由预设规则生成，仅供自我探索参考，不是诊断，也不是经过验证的客观测评。</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" id="heroStart" type="button">开始探索</button>
+          <a class="btn btn-ghost" href="#plans">查看三个版本</a>
+        </div>
+        <p class="tiny" id="heroPlanHint"></p>
+      </div>
+      <aside class="hero-index" aria-hidden="true">
+        <p class="hi-head">四个维度</p>
+        <div class="hi-row"><span class="hi-n">01</span><span class="hi-t">心智</span><span class="hi-e">Mind</span></div>
+        <div class="hi-row"><span class="hi-n">02</span><span class="hi-t">身体</span><span class="hi-e">Body</span></div>
+        <div class="hi-row"><span class="hi-n">03</span><span class="hi-t">关系与意义</span><span class="hi-e">Relationships</span></div>
+        <div class="hi-row"><span class="hi-n">04</span><span class="hi-t">职业与贡献</span><span class="hi-e">Vocation</span></div>
+      </aside>
+    </div>
+
+    <!-- 版本 -->
+    <section class="section" id="plans">
+      <div class="section-head">
+        <h2>三个版本，按你愿意投入的时间选</h2>
+        <p>每个版本对应一个可以分享的入口链接，链接里的参数决定你进入哪个版本。三个版本共用同一个访问码。</p>
+      </div>
+      <div class="plan-grid" id="planGrid"></div>
+      <p class="tiny">入口格式示例：<code>?plan=quick</code>、<code>?plan=standard</code>、<code>?plan=complete</code>。直接打开首页时，也可以在下面选择版本。</p>
+    </section>
+
+    <!-- 框架 -->
+    <section class="section" id="framework">
+      <div class="section-head">
+        <h2>四个维度</h2>
+        <p>HUMAN 3.0 把人的生活拆成几个相互影响的领域。这里用四个维度来组织问题，它们不是彼此独立的分数，而是同一件事的四个侧面。</p>
+      </div>
+      <div class="dim-grid">
+        <article class="dim-card">
+          <p class="dc-idx">01</p>
+          <h3>心智 <span>Mind</span></h3>
+          <p>你如何理解自己、处理信息和情绪、在不确定中做判断。它决定你看到什么样的世界，也决定你如何解释发生在自己身上的事。</p>
+        </article>
+        <article class="dim-card">
+          <p class="dc-idx">02</p>
+          <h3>身体 <span>Body</span></h3>
+          <p>睡眠、饮食、活动与恢复构成的底层系统。它不只是一个需要优化的对象，更是你能承受多少压力、能走多远的实际边界。</p>
+        </article>
+        <article class="dim-card">
+          <p class="dc-idx">03</p>
+          <h3>关系与意义 <span>Relationships &amp; Meaning</span></h3>
+          <p>你如何与他人建立连接、如何设边界、在哪里感到被理解，以及意义感从何而来。它常常是改变发生的地方，也最容易被忽略。</p>
+        </article>
+        <article class="dim-card">
+          <p class="dc-idx">04</p>
+          <h3>职业与贡献 <span>Vocation &amp; Contribution</span></h3>
+          <p>你如何选择要做的事、如何衡量进展、你的能力和真实需求是否对得上。它不只是工作，也包括你愿意长期投入的那部分。</p>
+        </article>
+      </div>
+
+      <div class="section-head" style="margin-top:32px">
+        <h2>报告里的两个坐标</h2>
+        <p>每个维度会给出两个判断，它们回答的是不同的问题。</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <h4>发展阶段：1.0 → 3.0</h4>
+          <p>1.0 主要依据外部标准生活；2.0 建立了自己的标准，但还在施工；3.0 能把生活当作整体，在不确定中持续校准。它是“你目前主要站在哪一层”，不是能力高低。</p>
+        </div>
+        <div class="step">
+          <h4>转变阶段：失调 → 不确定 → 发现</h4>
+          <p>失调期是“知道不对但说不清”；不确定期是“旧的松动了、新的没长好”；发现期是“方向大致清楚，正在把它做深”。它描述的是变化的位置，不是好坏。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 流程 -->
+    <section class="section" id="how">
+      <div class="section-head">
+        <h2>它是怎么跑起来的</h2>
+        <p>整个流程在浏览器里完成，没有后台，也没有 AI 调用。</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <h4>选版本与维度</h4>
+          <p>入口链接决定版本。标准版和完整版可以选全部四个维度，也可以只挑一个或几个重点维度深入。</p>
+        </div>
+        <div class="step">
+          <h4>选答题方式</h4>
+          <p>逐题模式一次只出现一道题，适合专注；分组模式按维度铺开所有题目，适合来回比较、随时修改。</p>
+        </div>
+        <div class="step">
+          <h4>答完才能出报告</h4>
+          <p>所有题目必须回答。可以随时返回修改之前的答案，报告会按最后一次选择重新生成。</p>
+        </div>
+        <div class="step">
+          <h4>拿到可复制的报告</h4>
+          <p>报告不显示数字分数，只给阶段、优势、值得关注的地方和下一步建议，可以一键复制保存。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI 说明 -->
+    <section class="section" id="ai">
+      <div class="section-head">
+        <h2>关于 AI 与后续版本</h2>
+        <p>当前版本是静态原型，先把流程跑通，AI 能力留在后面接入。</p>
+      </div>
+      <div class="note-card">
+        <h3><span class="badge">未接入</span>现在的版本</h3>
+        <p>所有题目固定、分支固定，报告由预设规则生成。页面不会调用任何 AI 服务，也不会向任何服务器发送你的回答。</p>
+      </div>
+      <div class="note-card" style="margin-top:12px">
+        <h3><span class="badge badge-soft">规划中</span>标准版</h3>
+        <p>计划接入 DeepSeek，由 AI 根据你的回答生成更贴合的报告。届时页面只负责收集回答，生成请求由后端转发。</p>
+      </div>
+      <div class="note-card" style="margin-top:12px">
+        <h3><span class="badge badge-soft">规划中</span>完整版</h3>
+        <p>在标准版基础上加入 AI 自适应追问：问题会根据你的回答变化，再据此生成报告。当前原型只展示这条流程的位置，不会伪装成 AI 已经工作。</p>
+      </div>
+      <p class="tiny">未来接入时，API Key 只会保存在后端服务器，不会写进网页代码、配置文件或 GitHub 仓库。</p>
+    </section>
+
+    <!-- 边界说明 -->
+    <section class="section" id="notice">
+      <div class="section-head">
+        <h2>需要说清楚的三件事</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <h4>它是参考，不是诊断</h4>
+          <p>结果来自一套自己编写的题目和预设规则，没有经过心理测量学验证，不能用于诊断、评估或任何正式决策。</p>
+        </div>
+        <div class="step">
+          <h4>它是原型，不是付费服务</h4>
+          <p>当前版本不收款、不开通会员。访问码只是流程演示，写在前端代码里，任何人都能看到，不构成权限保护。</p>
+        </div>
+        <div class="step">
+          <h4>它不留数据</h4>
+          <p>回答只存在于当前页面的内存中。刷新、关闭页面或点击“重新开始”，回答就会被清空，服务器上没有任何副本。</p>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ============================================================ 访问码 -->
+  <section class="screen" id="screen-gate" hidden>
+    <div class="gate-wrap">
+      <div class="card">
+        <p class="eyebrow">访问验证</p>
+        <h2>输入访问码</h2>
+        <p class="muted" id="gatePlanLabel">三个版本共用同一个访问码，由站点维护者提供。</p>
+        <form id="gateForm" novalidate>
+          <div class="field" id="gateField">
+            <label class="sr-only" for="gateInput">访问码</label>
+            <input id="gateInput" type="text" inputmode="text" autocomplete="off" autocapitalize="off"
+                   spellcheck="false" placeholder="请输入访问码">
+            <p class="field-error" id="gateError" hidden></p>
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">进入</button>
+        </form>
+        <p class="tiny" id="gateHint">这是纯前端演示，访问码写在前端配置里，只能用于流程演示，不构成真实的付费权限或安全保护。</p>
+        <div class="gate-actions">
+          <button class="btn btn-ghost btn-sm" id="gateBack" type="button">返回首页</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 设置 -->
+  <section class="screen" id="screen-setup" hidden>
+    <div class="setup">
+      <p class="eyebrow" id="setupPlanLabel">快速版</p>
+      <h2>开始前，先选一下</h2>
+      <p class="muted" id="setupIntro">全部四个维度，共 8 道题。</p>
+
+      <div class="setup-block" id="dimBlock">
+        <h3><span class="n">1</span>选择要探索的维度</h3>
+        <p>可以全选，也可以只挑重点。只选部分维度时，报告只总结这部分，不会推断整体类型。</p>
+        <div class="dim-choices" id="dimChoices"></div>
+        <button class="link-btn" id="dimAll" type="button">选择全部四个维度</button>
+        <p class="field-error" id="dimError" hidden>请至少选择一个维度。</p>
+      </div>
+
+      <div class="setup-block">
+        <h3><span class="n" id="modeStepNum">2</span>选择答题方式</h3>
+        <p>两种方式题目完全一样，只是呈现不同。答题过程中可以随时返回修改。</p>
+        <div class="mode-choices" id="modeChoices">
+          <button class="mode-choice" type="button" data-mode="step" aria-pressed="true">
+            <strong>逐题模式</strong>
+            <span>一次只显示一道题，选完再进入下一题，适合专注。</span>
+          </button>
+          <button class="mode-choice" type="button" data-mode="group" aria-pressed="false">
+            <strong>分组填写</strong>
+            <span>按维度铺开所有题目，随时上下浏览、回头修改。</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setup-summary" id="setupSummary"></div>
+
+      <div class="setup-actions">
+        <button class="btn btn-ghost" id="setupBack" type="button">返回</button>
+        <button class="btn btn-primary" id="setupStart" type="button">开始答题</button>
+      </div>
+      <p class="tiny" id="setupAiNote"></p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 答题 -->
+  <section class="screen" id="screen-quiz" hidden>
+    <div class="quiz">
+      <div class="quiz-head">
+        <div class="quiz-meta">
+          <span class="qm-dim" id="quizDim">心智</span>
+          <span id="quizCount">第 1 / 8 题</span>
+        </div>
+        <div class="progress" role="progressbar" aria-label="答题进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <i id="progressBar"></i>
+        </div>
+      </div>
+
+      <div id="stepView"></div>
+      <div id="groupView" class="group-view" hidden></div>
+      <div class="quiz-foot" id="quizFoot"></div>
+      <p class="missing-banner" id="missingBanner" hidden></p>
+    </div>
+  </section>
+
+  <!-- ============================================================ 报告 -->
+  <section class="screen" id="screen-report" hidden>
+    <div class="report">
+      <div class="report-head">
+        <p class="eyebrow">探索报告</p>
+        <h2 id="reportTitle">你的报告</h2>
+        <div class="report-meta" id="reportMeta"></div>
+        <p class="disclaimer">本报告由预设规则生成，仅供自我探索参考，不是心理诊断，也不是经过验证的客观测评。它描述的是你此刻对自己的一种叙述，不是关于你的定论。</p>
+      </div>
+      <div id="reportBody"></div>
+      <div class="report-actions">
+        <button class="btn btn-primary" id="btnCopy" type="button">复制报告</button>
+        <button class="btn btn-ghost" id="btnEdit" type="button">返回修改回答</button>
+        <button class="btn btn-ghost" id="btnRestart" type="button">重新开始</button>
+      </div>
+      <p class="tiny">回答只保存在当前页面中。刷新、关闭页面或重新开始，都会清空它们。</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <h4>关于这个站</h4>
+      <p>Human3.0人生评估是一个中文互动自我探索页面，用四个维度帮助你把“我现在在哪、正在经历什么”说清楚一点。</p>
+      <p>当前版本为免费静态原型，仅用于流程测试：不收款、不开通会员、不接入 AI、不上传任何回答。</p>
+      <p>结果仅供参考，不构成诊断、咨询或任何形式的专业建议。</p>
+    </div>
+    <div>
+      <h4>理论来源</h4>
+      <p>理论框架参考 Dan Koe 的 HUMAN 3.0。题目、选项与说明为本项目自行编写，未复制原文。</p>
+      <ul>
+        <li><a href="https://letters.thedankoe.com/p/a-complete-knowledge-base-of-human" target="_blank" rel="noopener noreferrer">A Complete Knowledge Base of HUMAN 3.0</a></li>
+        <li><a href="https://letters.thedankoe.com/p/prompt-human-30-self-discovery-and" target="_blank" rel="noopener noreferrer">Prompt: HUMAN 3.0 Self-Discovery and ...</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© <span id="year">2026</span> Human3.0人生评估 · 静态原型</span>
+    <span>不收集数据 · 不发送请求 · 不显示分数</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">重新开始？</h3>
+    <p id="modalText">当前所有回答会被清空，且无法恢复。</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" id="modalCancel" type="button">取消</button>
+      <button class="btn btn-primary btn-sm" id="modalOk" type="button">确认清空</button>
+    </div>
+  </div>
+</div>
+
+<noscript>
+  <div style="max-width:720px;margin:40px auto;padding:0 20px;color:#f1ede6;font-family:sans-serif">
+    <h2>需要启用 JavaScript</h2>
+    <p>这个页面的答题与报告生成都在浏览器本地完成，请启用 JavaScript 后重新打开。</p>
+  </div>
+</noscript>
+
+<script src="assets/config.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/logic.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
