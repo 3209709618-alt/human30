@@ -4,6 +4,17 @@
 
 > 当前版本为免费原型，仅用于流程测试：不收款、不接入 AI、不上传也不保存任何回答。
 
+## 在线地址
+
+| 入口 | 链接 |
+| --- | --- |
+| 首页（选择版本） | https://3209709618-alt.github.io/human30/ |
+| 快速版 · 约 5 分钟 | https://3209709618-alt.github.io/human30/?plan=quick |
+| 标准版 · 约 15 分钟 | https://3209709618-alt.github.io/human30/?plan=standard |
+| 完整版 · 约 30 分钟 | https://3209709618-alt.github.io/human30/?plan=complete |
+
+访问码：`human30`（在 `assets/config.js` 中修改，三个入口共用）。
+
 ---
 
 ## 1. 文件结构
