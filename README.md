@@ -13,7 +13,7 @@
 | 标准版 · 约 15 分钟 | https://3209709618-alt.github.io/human30/?plan=standard |
 | 完整版 · 约 30 分钟 | https://3209709618-alt.github.io/human30/?plan=complete |
 
-访问码：`human30`（在 `assets/config.js` 中修改，三个入口共用）。
+访问码：`han0220`（在 `assets/config.js` 中修改，三个入口共用）。
 
 ---
 
@@ -101,13 +101,13 @@ npx serve .
 
 ```js
 window.HUMAN30_CONFIG = {
-  ACCESS_CODE: 'human30',   // ← 改成你自己的访问码
+  ACCESS_CODE: 'han0220',   // ← 改成你自己的访问码
   SITE_NAME: 'Human3.0人生评估',
   SHOW_CODE_HINT: false     // 改成 true 会在页面上显示演示访问码
 };
 ```
 
-- 默认访问码是 `human30`（不区分大小写，首尾空格会被忽略）。
+- 当前访问码是 `han0220`（不区分大小写，首尾空格会被忽略）。
 - 三个版本共用这一个访问码。
 - **这只是前端演示**：访问码写在公开的 JS 文件里，任何人查看源码都能看到，不能当作真实的付费权限、会员校验或安全保护。真正收费需要后端校验。
 

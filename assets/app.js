@@ -15,7 +15,7 @@
   var L = window.H30Logic;
 
   var CFG = Object.assign({
-    ACCESS_CODE: 'human30',
+    ACCESS_CODE: 'han0220',
     SITE_NAME: 'Human3.0人生评估',
     SHOW_CODE_HINT: false
   }, window.HUMAN30_CONFIG || {});

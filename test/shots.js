@@ -10,6 +10,8 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(ROOT, '..', '.preview');
 const PORT = 8902;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
+const CFG_SRC = fs.readFileSync(path.join(ROOT, 'assets/config.js'), 'utf8');
+const CODE = (CFG_SRC.match(/ACCESS_CODE:////s*'([^']+)'/) || [])[1] || 'han0220';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'application/javascript; charset=utf-8' };
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -58,7 +60,7 @@ const server = http.createServer((req, res) => {
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(OUT, '06-gate.png') });
 
-  await page.fill('#gateInput', 'human30');
+  await page.fill('#gateInput', CODE);
   await page.click('#gateForm button[type="submit"]');
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(OUT, '07-setup.png') });
@@ -85,7 +87,7 @@ const server = http.createServer((req, res) => {
   const p2 = await desktop.newPage();
   await p2.goto(BASE + '?plan=quick', { waitUntil: 'load' });
   await p2.click('#heroStart');
-  await p2.fill('#gateInput', 'human30');
+  await p2.fill('#gateInput', CODE);
   await p2.click('#gateForm button[type="submit"]');
   await p2.click('#setupStart');
   for (let i = 0; i < 8; i++) {
@@ -105,7 +107,7 @@ const server = http.createServer((req, res) => {
   const p3 = await desktop.newPage();
   await p3.goto(BASE + '?plan=standard', { waitUntil: 'load' });
   await p3.click('#heroStart');
-  await p3.fill('#gateInput', 'human30');
+  await p3.fill('#gateInput', CODE);
   await p3.click('#gateForm button[type="submit"]');
   await p3.click('[data-dim="body"]');
   await p3.click('[data-dim="vocation"]');
@@ -129,7 +131,7 @@ const server = http.createServer((req, res) => {
   await m.click('.plan-card[data-plan="quick"]');
   await m.waitForTimeout(300);
   await m.screenshot({ path: path.join(OUT, '22-m-gate.png') });
-  await m.fill('#gateInput', 'human30');
+  await m.fill('#gateInput', CODE);
   await m.click('#gateForm button[type="submit"]');
   await m.waitForTimeout(300);
   await m.screenshot({ path: path.join(OUT, '23-m-setup.png') });
@@ -154,7 +156,7 @@ const server = http.createServer((req, res) => {
   const g = await desktop.newPage();
   await g.goto(BASE + '?plan=quick', { waitUntil: 'load' });
   await g.click('#heroStart');
-  await g.fill('#gateInput', 'human30');
+  await g.fill('#gateInput', CODE);
   await g.click('#gateForm button[type="submit"]');
   await g.click('[data-mode="group"]');
   await g.click('#setupStart');

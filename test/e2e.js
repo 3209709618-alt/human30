@@ -12,7 +12,9 @@ const { chromium } = require('C:/Users/32097/AppData/Roaming/npm/node_modules/@p
 const ROOT = path.resolve(__dirname, '..');
 const PORT = 8901;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
-const CODE = 'human30';
+// 从 config.js 读取当前访问码，避免改码后测试失效
+const CFG_SRC = fs.readFileSync(path.join(ROOT, 'assets/config.js'), 'utf8');
+const CODE = (CFG_SRC.match(/ACCESS_CODE:\s*'([^']+)'/) || [])[1] || 'han0220';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

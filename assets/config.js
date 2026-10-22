@@ -13,7 +13,7 @@
 
 window.HUMAN30_CONFIG = {
   // 访问码（不区分大小写，首尾空格会被忽略）
-  ACCESS_CODE: 'human30',
+  ACCESS_CODE: 'han0220',
 
   // 站点名称
   SITE_NAME: 'Human3.0人生评估',
