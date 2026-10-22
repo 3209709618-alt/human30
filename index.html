@@ -34,11 +34,11 @@
       <div class="hero-copy">
         <p class="eyebrow">免费原型 · 自我探索</p>
         <h1>Human<span class="num">3.0</span><br><span class="thin">人生评估</span></h1>
-        <p class="lede">用四个维度，看清自己现在站在哪里、正在经历什么样的转变。</p>
-        <p class="hero-note">这是一个静态原型：不收集、不上传、不保存你的回答。报告由预设规则生成，仅供自我探索参考，不是诊断，也不是经过验证的客观测评。</p>
+        <p class="lede">32 个问题，把「我现在卡在哪」说清楚。</p>
+        <p class="hero-note">四个维度、约 30 分钟、一份可以带走的报告。不收集、不上传、不保存你的回答。</p>
         <div class="hero-actions">
-          <button class="btn btn-primary" id="heroStart" type="button">开始探索</button>
-          <a class="btn btn-ghost" href="#plans">查看三个版本</a>
+          <button class="btn btn-primary" id="heroStart" type="button">开始评估</button>
+          <a class="btn btn-ghost" href="#sample">报告长什么样</a>
         </div>
         <p class="tiny" id="heroPlanHint"></p>
       </div>
@@ -51,14 +51,42 @@
       </aside>
     </div>
 
-    <!-- 版本 -->
-    <section class="section" id="plans">
+    <!-- 痛点 -->
+    <section class="section" id="signals">
       <div class="section-head">
-        <h2>三个版本，按你愿意投入的时间选</h2>
-        <p>每个版本对应一个可以分享的入口链接，链接里的参数决定你进入哪个版本。三个版本共用同一个访问码。</p>
+        <h2>如果你也有这些感觉</h2>
+        <p>它们不一定说明你出了问题，更可能说明你正处在某个转变的中间。</p>
       </div>
-      <div class="plan-grid" id="planGrid"></div>
-      <p class="tiny">入口格式示例：<code>?plan=quick</code>、<code>?plan=standard</code>、<code>?plan=complete</code>。直接打开首页时，也可以在下面选择版本。</p>
+      <div class="signal-grid">
+        <p class="signal">事情做得不少，但说不清自己到底在往哪走。</p>
+        <p class="signal">知道该运动、该早睡，就是排不进日程。</p>
+        <p class="signal">身边有人，真正能说上话的却没几个。</p>
+        <p class="signal">工作还算稳定，但每天醒来都觉得哪里不对。</p>
+      </div>
+    </section>
+
+    <!-- 报告样例 -->
+    <section class="section" id="sample">
+      <div class="section-head">
+        <h2>你会拿到一份什么样的报告</h2>
+        <p>不显示分数，不做排名。只回答三件事：你现在在哪、哪里值得注意、下一步做什么。</p>
+      </div>
+      <div class="sample-report">
+        <div class="sample-head">
+          <span class="sample-tag">报告片段 · 示例</span>
+          <span class="sample-dim">心智 · Mind</span>
+        </div>
+        <div class="sample-stages">
+          <div><span>发展阶段</span><b>2.0 自我建构期</b></div>
+          <div><span>转变阶段</span><b>不确定期 · Uncertainty</b></div>
+        </div>
+        <p class="sample-text">你已经开始用自己的标准看世界，会反思、会比较、会质疑。同时这套标准还在施工中，所以你容易在“坚持自己”和“怀疑自己”之间来回摆动。</p>
+        <div class="sample-advice">
+          <span>给你的建议</span>
+          <p>选一个已经想了很久的问题，把它改成一次两周的小实验：写下假设、做一件能验证它的事、两周后记录结果。</p>
+        </div>
+      </div>
+      <p class="tiny">示例只用于说明报告结构，不是任何人的真实结果。</p>
     </section>
 
     <!-- 框架 -->
@@ -109,33 +137,62 @@
     <!-- 流程 -->
     <section class="section" id="how">
       <div class="section-head">
-        <h2>它是怎么跑起来的</h2>
+        <h2>怎么进行</h2>
         <p>整个流程在浏览器里完成，没有后台，也没有 AI 调用。</p>
       </div>
       <div class="steps">
         <div class="step">
-          <h4>选版本与维度</h4>
-          <p>入口链接决定版本。标准版和完整版可以选全部四个维度，也可以只挑一个或几个重点维度深入。</p>
+          <h4>输入访问码</h4>
+          <p>访问码由站点维护者提供，输入后直接进入答题。</p>
         </div>
         <div class="step">
-          <h4>逐题作答，答题卡跳题</h4>
-          <p>一次只显示一道题，右侧答题卡标出已答与未答，点题号就能跳回去修改；手机上答题卡收在顶部，点一下展开。</p>
+          <h4>回答 32 道题</h4>
+          <p>一次一道，选中自动进入下一题。答题卡标出已答与未答，点题号可以跳回去修改。</p>
         </div>
         <div class="step">
-          <h4>答完才能出报告</h4>
-          <p>所有题目必须回答。可以随时返回修改之前的答案，报告会按最后一次选择重新生成。</p>
+          <h4>补充背景（可选）</h4>
+          <p>最后一题下方可以写下你的处境，方便回看时更有上下文；笔记不参与任何判断。</p>
         </div>
         <div class="step">
-          <h4>拿到可复制的报告</h4>
-          <p>报告不显示数字分数，只给阶段、优势、值得关注的地方和下一步建议，可以一键复制保存。</p>
+          <h4>生成并复制报告</h4>
+          <p>报告不显示分数，只给阶段、优势、值得关注的地方和一条具体建议，可以一键复制。</p>
         </div>
+      </div>
+    </section>
+
+    <!-- 常见问题 -->
+    <section class="section" id="faq">
+      <div class="section-head">
+        <h2>常见问题</h2>
+      </div>
+      <div class="faq">
+        <details class="faq-item">
+          <summary>需要多长时间？</summary>
+          <p>32 道题，大约 30 分钟。建议一次做完：刷新或关闭页面会清空回答。</p>
+        </details>
+        <details class="faq-item">
+          <summary>这是心理测试吗？</summary>
+          <p>不是。它是一次基于 HUMAN 3.0 框架的自我探索，不是心理、医疗或职业诊断，也没有经过心理测量学验证。</p>
+        </details>
+        <details class="faq-item">
+          <summary>报告里有分数吗？</summary>
+          <p>没有。报告只给发展阶段、转变阶段、优势、值得关注的地方和一条可以马上做的建议。</p>
+        </details>
+        <details class="faq-item">
+          <summary>可以改答案吗？</summary>
+          <p>可以。答题卡点题号就能跳回去，改完不会自动跳走；报告按最后一次选择生成。</p>
+        </details>
+        <details class="faq-item">
+          <summary>我的回答会被保存吗？</summary>
+          <p>不会。回答只存在当前页面的内存里，不上传、不写本地存储，服务器上没有任何副本。</p>
+        </details>
       </div>
     </section>
 
     <!-- AI 说明 -->
     <section class="section" id="ai">
       <div class="section-head">
-        <h2>关于 AI 与后续版本</h2>
+        <h2>关于 AI</h2>
         <p>当前版本是静态原型，先把流程跑通，AI 能力留在后面接入。</p>
       </div>
       <div class="note-card">
@@ -143,12 +200,8 @@
         <p>所有题目固定、分支固定，报告由预设规则生成。页面不会调用任何 AI 服务，也不会向任何服务器发送你的回答。</p>
       </div>
       <div class="note-card" style="margin-top:12px">
-        <h3><span class="badge badge-soft">规划中</span>标准版</h3>
-        <p>计划接入 DeepSeek，由 AI 根据你的回答生成更贴合的报告。届时页面只负责收集回答，生成请求由后端转发。</p>
-      </div>
-      <div class="note-card" style="margin-top:12px">
-        <h3><span class="badge badge-soft">规划中</span>完整版</h3>
-        <p>在标准版基础上加入 AI 自适应追问：问题会根据你的回答变化，再据此生成报告。当前原型只展示这条流程的位置，不会伪装成 AI 已经工作。</p>
+        <h3><span class="badge badge-soft">规划中</span>后续版本</h3>
+        <p>计划加入 AI 自适应追问：问题会根据你的回答变化，再据此生成报告。当前原型只展示这条流程的位置，不会伪装成 AI 已经工作。</p>
       </div>
       <p class="tiny">未来接入时，API Key 只会保存在后端服务器，不会写进网页代码、配置文件或 GitHub 仓库。</p>
     </section>
@@ -181,7 +234,7 @@
       <div class="card">
         <p class="eyebrow">访问验证</p>
         <h2>输入访问码</h2>
-        <p class="muted" id="gatePlanLabel">三个版本共用同一个访问码，由站点维护者提供。</p>
+        <p class="muted" id="gatePlanLabel">完整版 · 约 30 分钟，共 32 道题。</p>
         <form id="gateForm" novalidate>
           <div class="field" id="gateField">
             <label class="sr-only" for="gateInput">访问码</label>
@@ -202,20 +255,17 @@
   <!-- ============================================================ 设置 -->
   <section class="screen" id="screen-setup" hidden>
     <div class="setup">
-      <p class="eyebrow" id="setupPlanLabel">快速版</p>
-      <h2 id="setupTitle">开始前，先选一下</h2>
-      <p class="muted" id="setupIntro">全部四个维度，共 8 道题。</p>
-
-      <div class="setup-block" id="dimBlock">
-        <h3><span class="n">1</span>选择要探索的维度</h3>
-        <p>可以全选，也可以只挑重点。只选部分维度时，报告只总结这部分，不会推断整体类型。</p>
-        <div class="dim-choices" id="dimChoices"></div>
-        <button class="link-btn" id="dimAll" type="button">选择全部四个维度</button>
-        <p class="field-error" id="dimError" hidden>请至少选择一个维度。</p>
-      </div>
+      <p class="eyebrow" id="setupPlanLabel">完整版 · 约 30 分钟</p>
+      <h2>准备好了就开始</h2>
+      <p class="muted" id="setupIntro">四个维度各 8 题，覆盖判断、作息、关系与职业方向。</p>
 
       <div class="setup-summary" id="setupSummary"></div>
-      <p class="tiny">答题方式为逐题模式：一次只显示一道题。右侧答题卡会标出已答与未答的题目，点题号可以随时跳回修改。</p>
+
+      <ul class="setup-points">
+        <li>一次一道题，选中后自动进入下一题。</li>
+        <li>想改答案，点答题卡上的题号跳回去；改完不会自动跳走。</li>
+        <li>最后一题可以补充背景，再生成报告。</li>
+      </ul>
 
       <div class="setup-actions">
         <button class="btn btn-ghost" id="setupBack" type="button">返回</button>
@@ -293,7 +343,7 @@
     <div>
       <h4>关于这个站</h4>
       <p>Human3.0人生评估是一个中文互动自我探索页面，用四个维度帮助你把“我现在在哪、正在经历什么”说清楚一点。</p>
-      <p>当前版本为免费静态原型，仅用于流程测试：不收款、不开通会员、不接入 AI、不上传任何回答。</p>
+      <p>当前为免费静态原型，仅用于流程测试：不收款、不开通会员、不接入 AI、不上传任何回答。</p>
       <p>结果仅供参考，不构成诊断、咨询或任何形式的专业建议。</p>
     </div>
     <div>

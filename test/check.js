@@ -79,11 +79,10 @@ must.forEach(([label, needle]) => {
 const logic = fs.readFileSync(path.join(ROOT, 'assets/logic.js'), 'utf8');
 const app = fs.readFileSync(path.join(ROOT, 'assets/app.js'), 'utf8');
 const mustInLogic = [
-  ['信息不足措辞', '目前信息不足，无法可靠判断'],
-  ['不补全声明', '不会被补全'],
   ['理论来源', 'Dan Koe'],
   ['跨维度议题', 'LINKAGE'],
-  ['跨维度建议', 'LEVERAGE']
+  ['跨维度建议', 'LEVERAGE'],
+  ['无分数声明', '不输出数字分数']
 ];
 mustInLogic.forEach(([label, needle]) => {
   checks++;
@@ -95,7 +94,9 @@ mustInLogic.forEach(([label, needle]) => {
 const mustInApp = [
   ['笔记不参与判断说明', '不参与阶段判断'],
   ['笔记原文展示', 'note-report'],
-  ['依据展开', 'basis']
+  ['依据展开', 'basis'],
+  ['自动跳题', 'advanceTimer'],
+  ['单一版本入口', 'canonicalizeUrl']
 ];
 mustInApp.forEach(([label, needle]) => {
   checks++;

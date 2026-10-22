@@ -279,38 +279,24 @@
     return map[phase];
   }
 
-  function buildOverview(rows, allDims) {
-    var names = rows.map(function (r) { return '「' + r.name + '」'; });
-    var nameText = names.length > 1
-      ? names.slice(0, -1).join('、') + '和' + names[names.length - 1]
-      : names[0];
+  function buildOverview(rows) {
     var parts = [];
-
-    if (allDims) {
-      parts.push('你这次完成了全部四个维度。');
-      parts.push(stageSentence(rows));
-      parts.push(phaseSentence(rows));
-      parts.push('以下判断都来自这一次的回答，样本很小，请把它当成一面镜子，而不是一份结论。');
-    } else {
-      parts.push('你这次只完成了' + nameText + '，所以下面的内容只针对这部分展开。');
-      parts.push(stageSentence(rows));
-      parts.push('因为缺少其余维度的回答，元类型、生活方式原型和跨维度分析都无法判断——目前信息不足，这里不做推测。');
-    }
-
+    parts.push('你这次完成了全部四个维度。');
+    parts.push(stageSentence(rows));
+    parts.push(phaseSentence(rows));
+    parts.push('以下判断都来自这一次的回答，样本很小，请把它当成一面镜子，而不是一份结论。');
     return parts.join('');
   }
 
   /* ------------------------------------------------------------ 生成报告 */
 
   function buildReport(input) {
-    var plan = input.plan;
-    var dims = input.dims.slice();
     var answers = input.answers;
-    var planMeta = D.PLANS[plan];
-    var questions = input.questions || questionsFor(plan, dims);
+    var planMeta = D.PLANS.complete;
+    var questions = input.questions || questionsFor('complete', D.DIM_ORDER);
 
     var rows = [];
-    dims.forEach(function (id) {
+    D.DIM_ORDER.forEach(function (id) {
       var row = analyzeDimension(id, answers, questions);
       if (row) rows.push(row);
     });
@@ -321,28 +307,20 @@
     var linkage = allDims ? pickLinkage(rows) : null;
     var crossAdvice = allDims ? pickCrossAdvice(rows, linkage) : null;
     var note = String(input.note || '').trim();
-    var missingDetail = allDims ? null :
-      '元类型、生活方式原型与跨维度分析需要四个维度全部完成才能生成；你这次完成了 ' +
-      rows.length + ' 个维度，缺少' +
-      D.DIMENSIONS.filter(function (d) { return dims.indexOf(d.id) === -1; })
-        .map(function (d) { return '「' + d.name + '」'; }).join('、') +
-      '。未作答的维度不会被补全，也不会被猜测。';
 
     return {
-      plan: plan,
+      plan: 'complete',
       planName: planMeta.name,
       planMinutes: planMeta.minutes,
       generatedAt: input.now || new Date(),
-      dims: dims,
+      dims: D.DIM_ORDER.slice(),
       allDims: allDims,
-      overview: buildOverview(rows, allDims),
+      overview: buildOverview(rows),
       rows: rows,
       metatype: metatype,
       archetype: archetype,
       linkage: linkage,
       crossAdvice: crossAdvice,
-      missingDetail: missingDetail,
-      missingNote: allDims ? null : '目前信息不足，无法可靠判断。' + missingDetail,
       note: note,
       disclaimer: DISCLAIMER,
       aiNote: planMeta.aiNote
@@ -387,10 +365,6 @@
 
       lines.push('【跨维度建议】');
       lines.push(report.crossAdvice.text);
-      lines.push('');
-    } else {
-      lines.push('【元类型 / 生活方式原型 / 跨维度分析】');
-      lines.push(report.missingNote);
       lines.push('');
     }
 

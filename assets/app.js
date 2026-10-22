@@ -23,7 +23,6 @@
   /* ------------------------------------------------------------- 状态 */
 
   var state = {
-    plan: null,
     unlocked: false,
     dims: D.DIM_ORDER.slice(),
     answers: {},
@@ -33,6 +32,8 @@
     report: null,
     screen: 'landing'
   };
+
+  var advanceTimer = null;
 
   /* ------------------------------------------------------------- 工具 */
 
@@ -97,87 +98,37 @@
   }
 
   function updateChrome() {
+    var p = D.PLANS.complete;
     var pill = $('planPill');
-    if (state.plan) {
-      var p = D.PLANS[state.plan];
-      pill.hidden = false;
-      pill.textContent = p.name + ' · ' + p.minutes;
-    } else {
-      pill.hidden = true;
-    }
-    $('btnRestartTop').hidden = !(state.plan && state.screen !== 'landing' && state.screen !== 'gate');
+    pill.hidden = (state.screen === 'landing');
+    pill.textContent = p.name + ' · ' + p.minutes;
+    $('btnRestartTop').hidden = !(state.screen === 'setup' || state.screen === 'quiz' || state.screen === 'report');
   }
 
-  /* ------------------------------------------------------- 版本与入口 */
+  /* ------------------------------------------------------- 入口与版本 */
 
-  function readPlanFromUrl() {
-    var p = null;
-    try {
-      p = new URLSearchParams(window.location.search).get('plan');
-    } catch (e) { p = null; }
-    return (p && D.PLANS[p]) ? p : null;
-  }
-
-  function writePlanToUrl(plan) {
+  // 只保留完整版：任何 plan 参数都落到完整版，旧链接不会报错
+  function canonicalizeUrl() {
     try {
       var url = new URL(window.location.href);
-      url.searchParams.set('plan', plan);
-      window.history.replaceState({}, '', url.toString());
+      if (url.searchParams.get('plan') !== 'complete') {
+        url.searchParams.set('plan', 'complete');
+        window.history.replaceState({}, '', url.toString());
+      }
     } catch (e) { /* file:// 等环境下忽略 */ }
   }
 
-  function renderPlans() {
-    var wrap = $('planGrid');
-    wrap.innerHTML = D.PLAN_ORDER.map(function (id) {
-      var p = D.PLANS[id];
-      var active = state.plan === id;
-      return '' +
-        '<button class="plan-card' + (active ? ' is-active' : '') + '" type="button" data-plan="' + id + '"' +
-        ' aria-label="选择' + esc(p.name) + '">' +
-        (active ? '<span class="pc-badge">当前入口</span>' : '') +
-        '<span class="pc-top"><span class="pc-name">' + esc(p.name) + '</span><span class="pc-time">' + esc(p.minutes) + '</span></span>' +
-        '<span class="pc-tag">' + esc(p.tagline) + '</span>' +
-        '<span class="pc-desc">' + esc(p.desc) + '</span>' +
-        '<span class="pc-link">?plan=' + id + '</span>' +
-        '</button>';
-    }).join('');
-  }
-
   function updateLanding() {
-    var hint = $('heroPlanHint');
-    var start = $('heroStart');
-    if (state.plan) {
-      var p = D.PLANS[state.plan];
-      hint.textContent = '当前入口：' + p.name + ' · ' + p.minutes + '（链接参数 ?plan=' + state.plan + '）';
-      start.textContent = '开始' + p.name;
-    } else {
-      hint.textContent = '还没有选择版本。三个版本题目数量和时长不同，可以在下面挑一个。';
-      start.textContent = '选择版本';
-    }
-    renderPlans();
-  }
-
-  function choosePlan(id) {
-    if (!D.PLANS[id]) return;
-    if (state.plan !== id) {
-      // 换版本时清空旧回答，避免不同版本之间串题
-      state.answers = {};
-      state.report = null;
-      state.idx = 0;
-    }
-    state.plan = id;
-    writePlanToUrl(id);
-    updateLanding();
-    go(state.unlocked ? 'setup' : 'gate');
-    if (state.unlocked) renderSetup();
-    else renderGate();
+    var p = D.PLANS.complete;
+    $('heroStart').textContent = '开始评估';
+    $('heroPlanHint').textContent = '32 道题 · 四个维度 · ' + p.minutes + ' · 不上传、不保存';
   }
 
   /* ------------------------------------------------------------- 访问码 */
 
   function renderGate() {
-    var p = D.PLANS[state.plan];
-    $('gatePlanLabel').textContent = '你正在进入：' + p.name + '（' + p.minutes + '）。三个版本共用同一个访问码。';
+    var p = D.PLANS.complete;
+    $('gatePlanLabel').textContent = '完整版 · ' + p.minutes + '，共 32 道题。';
     $('gateHint').textContent = CFG.SHOW_CODE_HINT
       ? '演示用访问码：' + CFG.ACCESS_CODE + '。这是纯前端演示，只能用于流程测试，不构成真实的付费权限或安全保护。'
       : '这是纯前端演示，访问码写在前端配置里，只能用于流程演示，不构成真实的付费权限或安全保护。';
@@ -215,71 +166,30 @@
   /* ------------------------------------------------------------- 设置 */
 
   function renderSetup() {
-    var p = D.PLANS[state.plan];
+    var p = D.PLANS.complete;
     $('setupPlanLabel').textContent = p.name + ' · ' + p.minutes;
     $('setupIntro').textContent = p.desc;
-    $('setupTitle').textContent = p.allowsDimensionChoice ? '开始前，先选一下' : '准备好就开始';
-    $('dimBlock').hidden = !p.allowsDimensionChoice;
-
-    var wrap = $('dimChoices');
-    wrap.innerHTML = D.DIMENSIONS.map(function (d) {
-      var on = state.dims.indexOf(d.id) !== -1;
-      return '<button class="dim-choice" type="button" data-dim="' + d.id + '" aria-pressed="' + on + '">' +
-        '<span class="box" aria-hidden="true"></span>' +
-        '<span><span class="dc-t">' + esc(d.name) + '</span><span class="dc-s">' + esc(d.short) + '</span></span>' +
-        '</button>';
-    }).join('');
-
-    $('dimError').hidden = true;
     updateSetupSummary();
   }
 
   function updateSetupSummary() {
-    var p = D.PLANS[state.plan];
-    var dims = p.allowsDimensionChoice ? state.dims : D.DIM_ORDER.slice();
-    var qs = L.questionsFor(state.plan, dims);
+    var qs = L.questionsFor('complete', D.DIM_ORDER);
     var answered = qs.filter(function (q) { return state.answers[q.id] !== undefined; }).length;
 
     $('setupSummary').innerHTML =
-      '<span>版本：<b>' + esc(p.name) + '</b></span>' +
-      '<span>维度：<b>' + dims.length + ' 个</b></span>' +
+      '<span>维度：<b>4 个</b></span>' +
       '<span>题量：<b>' + qs.length + ' 题</b></span>' +
       '<span>方式：<b>逐题模式</b></span>' +
+      '<span>预计：<b>' + D.PLANS.complete.minutes + '</b></span>' +
       (answered > 0 ? '<span>已答：<b>' + answered + ' 题</b></span>' : '');
 
     $('setupStart').textContent = answered > 0 ? '继续答题' : '开始答题';
-    $('setupAiNote').textContent = p.aiNote;
-  }
-
-  function toggleDim(id) {
-    var i = state.dims.indexOf(id);
-    if (i === -1) state.dims.push(id);
-    else state.dims.splice(i, 1);
-    // 保持维度顺序稳定
-    state.dims.sort(function (a, b) { return D.DIM_ORDER.indexOf(a) - D.DIM_ORDER.indexOf(b); });
-    $('dimError').hidden = true;
-    renderSetupDimsOnly();
-    updateSetupSummary();
-  }
-
-  function renderSetupDimsOnly() {
-    $('dimChoices').querySelectorAll('[data-dim]').forEach(function (btn) {
-      btn.setAttribute('aria-pressed', String(state.dims.indexOf(btn.getAttribute('data-dim')) !== -1));
-    });
+    $('setupAiNote').textContent = D.PLANS.complete.aiNote;
   }
 
   function startQuiz() {
-    var p = D.PLANS[state.plan];
-    var dims = p.allowsDimensionChoice ? state.dims.slice() : D.DIM_ORDER.slice();
-
-    if (!dims.length) {
-      $('dimError').hidden = false;
-      return;
-    }
-
-    // 报告只统计本次实际作答的维度
-    state.dims = dims.slice();
-    state.questions = L.questionsFor(state.plan, dims);
+    state.dims = D.DIM_ORDER.slice();
+    state.questions = L.questionsFor('complete', D.DIM_ORDER);
     if (!state.questions.length) return;
 
     // 只保留本次题目范围内的回答
@@ -301,6 +211,7 @@
   /* ------------------------------------------------------------- 答题 */
 
   function renderQuiz() {
+    clearAdvance();
     $('missingBanner').hidden = true;
     $('quizMap').classList.remove('is-open');
     $('mapToggle').setAttribute('aria-expanded', 'false');
@@ -377,7 +288,9 @@
       '<div class="q-block">' +
         '<h3 class="q-text">' + esc(q.text) + '</h3>' +
         '<div class="opts" role="group" aria-label="选项">' + optionsHtml(q) + '</div>' +
-        '<p class="q-hint">选择最接近你现在状态的一项，不用想太久。</p>' +
+        '<p class="q-hint">' + (isLast
+          ? '选完后可以补充背景，再生成报告。'
+          : '选中后自动进入下一题；想改可以点题号回去。') + '</p>' +
         noteHtml(isLast) +
       '</div>' +
       '<div class="quiz-nav">' +
@@ -387,7 +300,7 @@
         '</button>' +
       '</div>';
 
-    $('quizFoot').innerHTML = '<span class="qf-info">' + esc(D.PLANS[state.plan].name) + ' · 已答 <b>' +
+    $('quizFoot').innerHTML = '<span class="qf-info">已答 <b>' +
       answeredCount() + '</b> / ' + state.questions.length + '</span>' +
       '<button class="btn btn-ghost btn-sm" type="button" data-nav="back">返回设置</button>';
   }
@@ -405,10 +318,21 @@
       '</details>';
   }
 
+  function clearAdvance() {
+    if (advanceTimer) {
+      clearTimeout(advanceTimer);
+      advanceTimer = null;
+    }
+  }
+
   function selectOption(btn) {
     var q = state.questions[state.idx];
     var opt = q.options[Number(btn.getAttribute('data-opt'))];
     if (!opt) return;
+
+    var wasAnswered = state.answers[q.id] !== undefined;
+    clearAdvance();
+
     state.answers[q.id] = q.kind === 'level' ? Number(opt.v) : opt.v;
 
     btn.parentNode.querySelectorAll('[data-opt]').forEach(function (b) {
@@ -417,12 +341,22 @@
 
     var info = $('quizFoot').querySelector('.qf-info');
     if (info) {
-      info.innerHTML = esc(D.PLANS[state.plan].name) + ' · 已答 <b>' + answeredCount() + '</b> / ' + state.questions.length;
+      info.innerHTML = '已答 <b>' + answeredCount() + '</b> / ' + state.questions.length;
     }
 
     var next = document.querySelector('[data-nav="next"]');
     if (next) next.disabled = false;
     renderQuizMeta();
+
+    // 首次作答且不是最后一题：留出选中反馈的时间后自动进入下一题
+    var isLast = state.idx === state.questions.length - 1;
+    if (!wasAnswered && !isLast) {
+      var from = state.idx;
+      advanceTimer = setTimeout(function () {
+        advanceTimer = null;
+        if (state.screen === 'quiz' && state.idx === from) goStep(1);
+      }, 320);
+    }
   }
 
   function goStep(delta) {
@@ -431,6 +365,7 @@
 
   function jumpTo(i) {
     if (i < 0 || i >= state.questions.length) return;
+    clearAdvance();
     state.idx = i;
     $('missingBanner').hidden = true;
     $('quizMap').classList.remove('is-open');
@@ -461,10 +396,9 @@
   /* ------------------------------------------------------------- 报告 */
 
   function generateReport() {
-    if (!state.plan || !state.questions.length) return;
+    if (!state.questions.length) return;
+    clearAdvance();
     state.report = L.buildReport({
-      plan: state.plan,
-      dims: state.dims,
       answers: state.answers,
       questions: state.questions,
       note: state.note,
@@ -534,8 +468,7 @@
     $('reportTitle').textContent = r.planName + ' · 探索报告';
     $('reportMeta').innerHTML =
       '<span>' + esc(L.formatTime(r.generatedAt)) + '</span>' +
-      '<span>完成维度：' + r.rows.map(function (x) { return esc(x.name); }).join('、') + '</span>' +
-      '<span>' + r.rows.length + ' 个维度 · ' + state.questions.length + ' 道题</span>';
+      '<span>四个维度 · ' + state.questions.length + ' 道题</span>';
 
     var html = '<p class="report-overview">' + esc(r.overview) + '</p>';
 
@@ -549,12 +482,6 @@
         '<h3>跨维度建议</h3>' +
         (r.crossAdvice.priority ? '<p class="priority">优先处理：<b>' + esc(r.crossAdvice.priority) + '</b></p>' : '') +
         '<p class="cross-text">' + esc(r.crossAdvice.text) + '</p>' +
-        '</div>';
-    } else {
-      html += '<div class="insufficient">' +
-        '<h3>目前信息不足，无法可靠判断</h3>' +
-        '<p>' + esc(r.missingDetail) + '</p>' +
-        '<p class="insufficient-hint">补齐其余维度后重新答题，才会生成元类型、生活方式原型与跨维度分析。</p>' +
         '</div>';
     }
 
@@ -610,6 +537,7 @@
 
   function askRestart() {
     openModal('重新开始？', '当前所有回答会被清空，且无法恢复。', function () {
+      clearAdvance();
       state.answers = {};
       state.note = '';
       state.report = null;
@@ -632,12 +560,6 @@
     });
 
     $('heroStart').addEventListener('click', function () {
-      if (!state.plan) {
-        var plans = $('plans');
-        if (plans) plans.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        toast('先选一个版本');
-        return;
-      }
       if (state.unlocked) {
         renderSetup();
         go('setup');
@@ -647,24 +569,8 @@
       }
     });
 
-    $('planGrid').addEventListener('click', function (e) {
-      var card = e.target.closest('[data-plan]');
-      if (card) choosePlan(card.getAttribute('data-plan'));
-    });
-
     $('gateForm').addEventListener('submit', submitGate);
     $('gateBack').addEventListener('click', function () { go('landing'); });
-
-    $('dimChoices').addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-dim]');
-      if (btn) toggleDim(btn.getAttribute('data-dim'));
-    });
-    $('dimAll').addEventListener('click', function () {
-      state.dims = D.DIM_ORDER.slice();
-      renderSetupDimsOnly();
-      $('dimError').hidden = true;
-      updateSetupSummary();
-    });
 
     $('setupBack').addEventListener('click', function () { go('landing'); });
     $('setupStart').addEventListener('click', startQuiz);
@@ -739,7 +645,7 @@
     var y = $('year');
     if (y) y.textContent = String(new Date().getFullYear());
 
-    state.plan = readPlanFromUrl();
+    canonicalizeUrl();
     bind();
     updateLanding();
     go('landing');

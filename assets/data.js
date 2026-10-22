@@ -13,36 +13,18 @@
   /* ---------------------------------------------------------------- 版本 */
 
   var PLANS = {
-    quick: {
-      id: 'quick',
-      name: '快速版',
-      minutes: '约 5 分钟',
-      tagline: '最短路径，先看清四个维度的当前位置',
-      desc: '8 道题，四个维度各 2 题。适合第一次接触这个框架，或者只想快速照一面镜子。',
-      allowsDimensionChoice: false,
-      aiNote: '当前为静态原型，报告由预设规则生成。'
-    },
-    standard: {
-      id: 'standard',
-      name: '标准版',
-      minutes: '约 15 分钟',
-      tagline: '每个维度多问一层，看到阶段与转变',
-      desc: '全部维度共 16 题；也可以只挑一个或几个重点维度深入。',
-      allowsDimensionChoice: true,
-      aiNote: '后续版本计划接入 DeepSeek，由 AI 根据你的回答生成报告；当前仍使用预设规则，不会发出任何请求。'
-    },
     complete: {
       id: 'complete',
       name: '完整版',
       minutes: '约 30 分钟',
-      tagline: '把四个维度都走一遍，得到完整的类型画像',
-      desc: '全部维度共 32 题；也可以只挑重点维度深入，题目更细，涵盖认知、行动与时间视角。',
-      allowsDimensionChoice: true,
+      tagline: '四个维度、32 道题，一份完整的报告',
+      desc: '四个维度各 8 题，覆盖判断、作息、关系与职业方向。',
+      allowsDimensionChoice: false,
       aiNote: '后续版本计划加入 AI 自适应追问，并由此生成报告；当前题目与分支全部固定，不会发出任何请求。'
     }
   };
 
-  var PLAN_ORDER = ['quick', 'standard', 'complete'];
+  var PLAN_ORDER = ['complete'];
 
   /* -------------------------------------------------------------- 维度 */
 

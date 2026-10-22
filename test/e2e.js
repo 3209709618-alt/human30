@@ -1,6 +1,7 @@
 /* 端到端流程自测：node test/e2e.js
- * 使用本机 Chrome + playwright-core 驱动真实浏览器，
- * 覆盖三个入口、访问码、两种答题界面、必答校验、报告规则、复制与重置。
+ * 使用本机 Chrome + playwright-core 驱动真实浏览器。
+ * 覆盖：单一入口、访问码、自动跳题、改答案不跳、答题卡、必答校验、
+ *      报告结构、复制、重置、手机端布局、可选笔记。
  */
 'use strict';
 
@@ -12,7 +13,6 @@ const { chromium } = require('C:/Users/32097/AppData/Roaming/npm/node_modules/@p
 const ROOT = path.resolve(__dirname, '..');
 const PORT = 8901;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
-// 从 config.js 读取当前访问码，避免改码后测试失效
 const CFG_SRC = fs.readFileSync(path.join(ROOT, 'assets/config.js'), 'utf8');
 const CODE = (CFG_SRC.match(/ACCESS_CODE:\s*'([^']+)'/) || [])[1] || 'han0220';
 
@@ -50,7 +50,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-async function newPage(browser, plan) {
+async function newPage(browser, query) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
   const external = [];
@@ -59,24 +59,13 @@ async function newPage(browser, plan) {
     if (!u.startsWith('http://127.0.0.1:' + PORT) && !u.startsWith('data:') && !u.startsWith('blob:')) external.push(u);
   });
   page.on('pageerror', e => failures.push('页面脚本错误：' + e.message));
-  await page.goto(BASE + '?plan=' + plan, { waitUntil: 'load' });
+  await page.goto(BASE + (query || ''), { waitUntil: 'load' });
   return { ctx, page, external };
 }
 
 async function enterCode(page, code) {
   await page.fill('#gateInput', code);
   await page.click('#gateForm button[type="submit"]');
-}
-
-async function answerStepAll(page, max) {
-  for (let i = 0; i < max; i++) {
-    if (await page.isVisible('#screen-report')) return i;
-    const opts = page.locator('#stepView .opt');
-    await opts.first().click();
-    await page.locator('[data-nav="next"]').click();
-    await page.waitForTimeout(30);
-  }
-  return max;
 }
 
 (async () => {
@@ -87,19 +76,22 @@ async function answerStepAll(page, max) {
   });
 
   try {
-    /* ---------------------------------------------------- 入口 1：快速版 */
-    console.log('\n[入口] ?plan=quick');
+    /* ------------------------------------------------ 单一入口与访问码 */
+    console.log('\n[入口] ?plan=complete');
     {
-      const { ctx, page, external } = await newPage(browser, 'quick');
+      const { ctx, page, external } = await newPage(browser, '?plan=complete');
 
-      eq((await page.textContent('#planPill')).trim(), '快速版 · 约 5 分钟', '顶栏显示快速版');
-      eq(await page.getAttribute('.plan-card.is-active', 'data-plan'), 'quick', '快速版卡片为当前入口');
-      ok((await page.textContent('#heroPlanHint')).includes('?plan=quick'), '首页提示包含入口参数');
-      ok((await page.textContent('#heroStart')).includes('快速版'), '主按钮显示当前版本');
+      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '顶栏显示完整版');
+      eq((await page.textContent('#heroStart')).trim(), '开始评估', '主按钮为开始评估');
+      ok(await page.locator('#planGrid').count() === 0, '首页不再有版本卡片');
+      ok(!(await page.textContent('#screen-landing')).includes('快速版'), '首页不出现快速版');
+      ok(!(await page.textContent('#screen-landing')).includes('标准版'), '首页不出现标准版');
+      ok((await page.textContent('#screen-landing')).includes('32 个问题'), '首页说明题量');
+      ok((await page.textContent('#screen-landing')).includes('报告片段 · 示例'), '首页展示报告样例');
 
       await page.click('#heroStart');
       ok(await page.isVisible('#screen-gate'), '进入访问码页');
-      ok((await page.textContent('#gatePlanLabel')).includes('快速版'), '访问码页标明当前版本');
+      ok((await page.textContent('#gatePlanLabel')).includes('32 道题'), '访问码页标明题量');
 
       await enterCode(page, 'wrong-code');
       ok(await page.isVisible('#gateError'), '错误访问码显示提示');
@@ -107,266 +99,165 @@ async function answerStepAll(page, max) {
 
       await enterCode(page, CODE);
       ok(await page.isVisible('#screen-setup'), '正确访问码进入设置页');
-      ok(!(await page.isVisible('#dimBlock')), '快速版不显示维度选择');
-      ok((await page.textContent('#setupSummary')).includes('8 题'), '快速版题量为 8');
-      ok((await page.textContent('#setupSummary')).includes('逐题模式'), '设置页标明逐题模式');
-      ok((await page.textContent('#setupTitle')).includes('准备好'), '快速版无需选择，标题相应调整');
-      ok(await page.locator('#modeChoices').count() === 0, '已移除答题方式选择');
+      ok(await page.locator('#dimBlock').count() === 0, '设置页不再有维度选择');
+      ok((await page.textContent('#setupSummary')).includes('32 题'), '摘要显示 32 题');
+      ok((await page.textContent('#setupSummary')).includes('4 个'), '摘要显示四个维度');
+      ok((await page.textContent('.setup-points')).includes('自动进入下一题'), '设置页说明自动跳题');
 
       await page.click('#setupStart');
       ok(await page.isVisible('#screen-quiz'), '进入答题页');
-      eq((await page.textContent('#quizCount')).trim(), '第 1 / 8 题', '逐题模式题号显示');
-      ok(await page.locator('#stepView .opt').count() === 3, '每题 3 个选项');
-      ok(await page.locator('[data-nav="next"]').isDisabled(), '未作答时“下一题”不可用');
-
-      // 右侧答题卡
-      eq(await page.locator('#quizMap .map-num').count(), 8, '答题卡显示 8 个题号');
+      eq((await page.textContent('#quizCount')).trim(), '第 1 / 32 题', '从第 1 题开始');
+      eq(await page.locator('#quizMap .map-num').count(), 32, '答题卡显示 32 个题号');
       eq(await page.locator('#quizMap .map-group').count(), 4, '答题卡按四个维度分组');
-      ok((await page.locator('#quizMap .map-num').nth(0).getAttribute('class')).includes('is-current'), '第 1 题标为当前题');
-      ok((await page.textContent('#mapStat')).includes('已答 0 / 8'), '答题卡初始进度');
+      ok(await page.locator('#stepView .opt').count() === 3, '每题 3 个选项');
 
-      await page.locator('#quizMap .map-num').nth(2).click();
-      eq((await page.textContent('#quizCount')).trim(), '第 3 / 8 题', '点题号可跳到第 3 题');
-      ok((await page.locator('#quizMap .map-num').nth(2).getAttribute('class')).includes('is-current'), '跳转后当前题高亮');
-
+      /* ------------------------------------------------ 自动跳题 */
       await page.locator('#stepView .opt').first().click();
-      ok(!(await page.locator('[data-nav="next"]').isDisabled()), '作答后“下一题”可用');
-      ok((await page.locator('#quizMap .map-num').nth(2).getAttribute('class')).includes('is-done'), '作答后题号标记为已答');
-      ok((await page.textContent('#mapStat')).includes('已答 1 / 8'), '答题卡进度随之更新');
+      await page.waitForTimeout(180);
+      eq((await page.textContent('#quizCount')).trim(), '第 1 / 32 题', '刚选中时还没跳');
+      await page.waitForTimeout(400);
+      eq((await page.textContent('#quizCount')).trim(), '第 2 / 32 题', '选中后自动进入下一题');
 
+      /* ------------------------------------------------ 改答案不跳 */
       await page.locator('#quizMap .map-num').nth(0).click();
-      eq((await page.textContent('#quizCount')).trim(), '第 1 / 8 题', '可跳回第 1 题修改');
+      eq((await page.textContent('#quizCount')).trim(), '第 1 / 32 题', '可点题号跳回第 1 题');
+      await page.locator('#stepView .opt').nth(2).click();
+      await page.waitForTimeout(500);
+      eq((await page.textContent('#quizCount')).trim(), '第 1 / 32 题', '改答案后不自动跳走');
+      ok((await page.locator('#quizMap .map-num').nth(0).getAttribute('class')).includes('is-done'), '题号标记为已答');
 
-      const answered = await answerStepAll(page, 20);
-      ok(await page.isVisible('#screen-report'), '答完全部题目后生成报告');
-      eq(await page.locator('#reportBody .dim-report').count(), 4, '快速版报告覆盖四个维度');
-      eq(await page.locator('#reportBody .type-grid').count(), 1, '四维齐全时生成元类型与原型');
-      eq(await page.locator('#reportBody .insufficient').count(), 0, '四维齐全时不显示信息不足');
-      ok((await page.textContent('#reportBody')).includes('元类型'), '报告含元类型标题');
-      ok((await page.textContent('#reportBody')).includes('生活方式原型'), '报告含生活方式原型');
-      ok((await page.textContent('#reportBody')).includes('发展阶段'), '报告含发展阶段');
-      ok((await page.textContent('#reportBody')).includes('转变阶段'), '报告含转变阶段');
-      ok((await page.textContent('#reportMeta')).includes('8 道题'), '报告标明题量');
-
-      // 新报告结构：每维一条建议、判断依据、跨维度议题与建议
-      eq(await page.locator('#reportBody .advice-box').count(), 4, '每个维度一条建议');
-      eq(await page.locator('#reportBody .basis').count(), 4, '每个维度给出判断依据');
-      eq(await page.locator('#reportBody .linkage-card').count(), 1, '四维齐全时生成跨维度议题');
-      eq(await page.locator('#reportBody .actions-card').count(), 1, '四维齐全时生成跨维度建议');
-      ok((await page.textContent('#reportBody .linkage-card')).includes('可以带走的问题'), '跨维度议题包含核心问题');
-      ok((await page.textContent('.report-head .disclaimer')).includes('不是心理、医疗或职业诊断'), '报告声明覆盖三类诊断');
-      ok((await page.textContent('.report-head .disclaimer')).includes('Dan Koe'), '报告标注理论来源');
-
-      // 判断依据可以展开
-      ok(!(await page.locator('#reportBody .basis-a').first().isVisible()), '依据默认收起');
-      await page.locator('#reportBody .basis summary').first().click();
-      ok(await page.locator('#reportBody .basis-a').first().isVisible(), '展开后可见用户的具体选择');
-
-      // 数字分数检查：报告中不应出现“得分/分数：数字”这类表述
-      const bodyText = await page.textContent('#reportBody');
-      ok(!/(得分|评分|分数)\s*[:：]\s*\d/.test(bodyText), '报告不显示数字分数');
-
-      await page.click('#btnCopy');
-      await page.waitForTimeout(300);
-      const toastText = (await page.textContent('#toast')).trim();
-      ok(toastText.includes('已复制') || toastText.includes('复制失败'), '复制按钮有明确反馈：' + toastText);
-
-      await page.click('#btnEdit');
-      ok(await page.isVisible('#screen-quiz'), '可从报告返回修改回答');
-
-      await page.click('#btnRestartTop');
-      ok(await page.isVisible('#modal'), '重新开始弹出确认框');
-      await page.click('#modalOk');
-      ok(await page.isVisible('#screen-setup'), '确认后回到设置页');
-      ok(!(await page.textContent('#setupSummary')).includes('已答'), '重新开始已清空回答');
-      ok(await page.locator('#modal').isHidden(), '确认后关闭弹窗');
-
-      ok(external.length === 0, '全程无外部网络请求' + (external.length ? '：' + external.join(',') : ''));
-
-      await ctx.close();
-    }
-
-    /* ------------------------------------------- 入口 2：标准版 + 重点维度 */
-    console.log('\n[入口] ?plan=standard（只选两个维度）');
-    {
-      const { ctx, page, external } = await newPage(browser, 'standard');
-      eq((await page.textContent('#planPill')).trim(), '标准版 · 约 15 分钟', '顶栏显示标准版');
-      eq(await page.getAttribute('.plan-card.is-active', 'data-plan'), 'standard', '标准版卡片为当前入口');
-
-      await page.click('#heroStart');
-      await enterCode(page, CODE);
-      ok(await page.isVisible('#dimBlock'), '标准版显示维度选择');
-      ok((await page.textContent('#setupTitle')).includes('先选'), '标准版标题提示先选择');
-
-      await page.click('[data-dim="body"]');
-      await page.click('[data-dim="vocation"]');
-      const summary = await page.textContent('#setupSummary');
-      ok(summary.includes('2 个'), '可只选两个维度');
-      ok(summary.includes('8 题'), '两维共 8 题');
-
-      await page.click('#setupStart');
-      ok(await page.isVisible('#screen-quiz'), '进入答题');
-      eq(await page.locator('#quizMap .map-num').count(), 8, '答题卡只显示所选维度的 8 题');
-      eq(await page.locator('#quizMap .map-group').count(), 2, '答题卡只显示两个维度');
-
-      // 跳到最后一题作答，前面留空，验证必答校验
-      await page.locator('#quizMap .map-num').nth(7).click();
-      eq((await page.textContent('#quizCount')).trim(), '第 8 / 8 题', '可跳到最后一题');
+      /* ------------------------------------------------ 最后一题与必答 */
+      await page.locator('#quizMap .map-num').nth(31).click();
+      eq((await page.textContent('#quizCount')).trim(), '第 32 / 32 题', '可跳到最后一题');
       await page.locator('#stepView .opt').first().click();
-      await page.locator('[data-nav="next"]').click();
-      ok(await page.isVisible('#missingBanner'), '未答完时提示必答');
-      ok((await page.textContent('#missingBanner')).includes('7 题'), '提示未答数量');
-      ok(await page.isVisible('#screen-quiz'), '未答完不生成报告');
-      eq((await page.textContent('#quizCount')).trim(), '第 1 / 8 题', '自动跳到第一道未答题');
+      await page.waitForTimeout(500);
+      eq((await page.textContent('#quizCount')).trim(), '第 32 / 32 题', '最后一题不自动跳');
+      ok(await page.isVisible('.note-box'), '最后一题提供可选笔记');
 
-      // 补完剩余题目
-      for (let i = 0; i < 8; i++) {
+      await page.locator('[data-nav="next"]').click();
+      ok(await page.isVisible('#missingBanner'), '有漏题时提示必答');
+      ok((await page.textContent('#missingBanner')).includes('30 题'), '提示未答数量');
+      ok(await page.isVisible('#screen-quiz'), '未答完不生成报告');
+      eq((await page.textContent('#quizCount')).trim(), '第 2 / 32 题', '自动跳到第一道未答题');
+
+      /* ------------------------------------------------ 答完并出报告 */
+      for (let i = 0; i < 40; i++) {
         if (await page.isVisible('#screen-report')) break;
-        await page.locator('#stepView .opt').nth(1).click();
+        await page.locator('#stepView .opt').nth(i % 3).click();
         await page.locator('[data-nav="next"]').click();
       }
 
       ok(await page.isVisible('#screen-report'), '答完后生成报告');
-      eq(await page.locator('#reportBody .dim-report').count(), 2, '部分维度只总结已探索维度');
-      eq(await page.locator('#reportBody .type-grid').count(), 0, '部分维度不生成元类型');
-      ok(await page.isVisible('#reportBody .insufficient'), '部分维度显示信息不足');
-      eq((await page.locator('#reportBody .insufficient h3').textContent()).trim(), '目前信息不足，无法可靠判断', '信息不足标题使用规定措辞');
-      ok((await page.textContent('#reportBody .insufficient')).includes('不会被补全'), '说明不会补全未作答维度');
-      eq(await page.locator('#reportBody .linkage-card').count(), 0, '部分维度不生成跨维度议题');
-      eq(await page.locator('#reportBody .actions-card').count(), 0, '部分维度不生成跨维度建议');
-      eq(await page.locator('#reportBody .advice-box').count(), 2, '每个已完成维度各一条建议');
-      eq(await page.locator('#reportBody .basis').count(), 2, '每个已完成维度各一条依据');
-      ok(!(await page.textContent('#reportBody')).includes('思考先行型'), '部分维度不猜测整体类型');
-      ok(!(await page.textContent('#reportBody')).includes('均衡探索型'), '部分维度不猜测整体类型');
+      eq(await page.locator('#reportBody .dim-report').count(), 4, '报告覆盖四个维度');
+      eq(await page.locator('#reportBody .type-grid').count(), 1, '生成元类型与原型');
+      eq(await page.locator('#reportBody .advice-box').count(), 4, '每个维度一条建议');
+      eq(await page.locator('#reportBody .basis').count(), 4, '每个维度给出判断依据');
+      eq(await page.locator('#reportBody .linkage-card').count(), 1, '生成跨维度议题');
+      eq(await page.locator('#reportBody .actions-card').count(), 1, '生成跨维度建议');
+      eq(await page.locator('#reportBody .insufficient').count(), 0, '不再有信息不足提示');
+      ok((await page.textContent('#reportBody')).includes('可以带走的问题'), '跨维度议题含核心问题');
+      ok((await page.textContent('.report-head .disclaimer')).includes('心理、医疗或职业诊断'), '声明覆盖三类诊断');
+      ok((await page.textContent('.report-head .disclaimer')).includes('Dan Koe'), '声明标注理论来源');
+
+      const bodyText = await page.textContent('#reportBody');
+      ok(!/(得分|评分|分数)\s*[:：]\s*\d/.test(bodyText), '报告不显示数字分数');
+
+      await page.locator('#reportBody .basis summary').first().click();
+      ok(await page.locator('#reportBody .basis-a').first().isVisible(), '依据可展开');
+
+      await page.click('#btnCopy');
+      await page.waitForTimeout(300);
+      const toastText = (await page.textContent('#toast')).trim();
+      ok(toastText.includes('已复制') || toastText.includes('复制失败'), '复制按钮有反馈：' + toastText);
+
+      await page.click('#btnEdit');
+      ok(await page.isVisible('#screen-quiz'), '可从报告返回修改');
+
+      await page.click('#btnRestartTop');
+      ok(await page.isVisible('#modal'), '重新开始弹出确认');
+      await page.click('#modalOk');
+      ok(await page.isVisible('#screen-setup'), '确认后回到设置页');
+      ok(!(await page.textContent('#setupSummary')).includes('已答'), '重新开始清空回答');
 
       ok(external.length === 0, '全程无外部网络请求');
       await ctx.close();
     }
 
-    /* ---------------------------------------- 入口 3：完整版 + 单维度深入 */
-    console.log('\n[入口] ?plan=complete（只选心智维度）');
+    /* ------------------------------------------------ 旧链接兼容 */
+    console.log('\n[入口] 旧链接 ?plan=quick / ?plan=standard');
     {
-      const { ctx, page, external } = await newPage(browser, 'complete');
-      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '顶栏显示完整版');
-      eq(await page.getAttribute('.plan-card.is-active', 'data-plan'), 'complete', '完整版卡片为当前入口');
-
-      await page.click('#heroStart');
-      await enterCode(page, CODE);
-      await page.click('[data-dim="body"]');
-      await page.click('[data-dim="relationships"]');
-      await page.click('[data-dim="vocation"]');
-      ok((await page.textContent('#setupSummary')).includes('1 个'), '可只选一个维度');
-      ok((await page.textContent('#setupSummary')).includes('8 题'), '单维度 8 题');
-
-      await page.click('#setupStart');
-      eq((await page.textContent('#quizCount')).trim(), '第 1 / 8 题', '完整版单维度从第 1 题开始');
-      await answerStepAll(page, 12);
-      ok(await page.isVisible('#screen-report'), '单维度也能生成报告');
-      eq(await page.locator('#reportBody .dim-report').count(), 1, '报告只含一个维度');
-      ok((await page.textContent('#reportBody')).includes('心智'), '报告含已探索维度');
-      eq(await page.locator('#reportBody .advice-box').count(), 1, '单维度也有一条建议');
-      eq(await page.locator('#reportBody .linkage-card').count(), 0, '单维度不生成跨维度议题');
-      const heads = await page.locator('#reportBody .dim-report h3').allTextContents();
-      ok(!heads.join('|').includes('职业与贡献'), '报告维度卡片不含未探索维度');
-      ok(!heads.join('|').includes('身体'), '报告维度卡片不含未探索维度');
-      ok(external.length === 0, '全程无外部网络请求');
-      await ctx.close();
-    }
-
-    /* --------------------------------------------- 完整版全维度 + 进度条 */
-    console.log('\n[入口] ?plan=complete（全部四个维度）');
-    {
-      const { ctx, page } = await newPage(browser, 'complete');
-      await page.click('#heroStart');
-      await enterCode(page, CODE);
-      ok((await page.textContent('#setupSummary')).includes('32 题'), '完整版全维度 32 题');
-      await page.click('#setupStart');
-      await page.locator('#stepView .opt').nth(1).click();
-      const width = await page.evaluate(() => document.getElementById('progressBar').style.width);
-      ok(parseFloat(width) > 0, '进度条随作答推进：' + width);
-
-      // 逐题模式回退修改
-      await page.locator('[data-nav="next"]').click();
-      await page.locator('[data-nav="prev"]').click();
-      ok((await page.textContent('#quizCount')).includes('第 1 / 32 题'), '可返回上一题');
-
-      await page.locator('#stepView .opt').nth(2).click();
-      ok(await page.getAttribute('#stepView .opt >> nth=2', 'aria-pressed') === 'true', '修改后新选项被选中');
-      ok(await page.getAttribute('#stepView .opt >> nth=1', 'aria-pressed') === 'false', '旧选项取消选中');
-      await ctx.close();
-    }
-
-    /* ------------------------------------------------------ 无参数访问 */
-    console.log('\n[入口] 不带 plan 参数');
-    {
-      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
-      const page = await ctx.newPage();
+      const { ctx, page } = await newPage(browser, '?plan=quick');
+      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '旧链接落到完整版');
+      ok(page.url().includes('plan=complete'), 'URL 自动规范为 plan=complete');
+      await page.goto(BASE + '?plan=standard', { waitUntil: 'load' });
+      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '标准版旧链接也落到完整版');
       await page.goto(BASE, { waitUntil: 'load' });
-      ok(await page.isVisible('#planGrid'), '无参数时显示版本选择');
-      eq((await page.textContent('#heroStart')).trim(), '选择版本', '无参数时主按钮为“选择版本”');
-      await page.click('.plan-card[data-plan="quick"]');
-      ok(await page.isVisible('#screen-gate'), '选择版本后进入访问码页');
-      ok(page.url().includes('plan=quick'), '选择版本后 URL 带上参数');
-      // 移动端不出现横向滚动
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      ok(overflow <= 1, '移动端无横向溢出（' + overflow + 'px）');
+      eq((await page.textContent('#planPill')).trim(), '完整版 · 约 30 分钟', '无参数同样进入完整版');
+      ok(page.url().includes('plan=complete'), '无参数时补上 plan=complete');
       await ctx.close();
     }
 
-    /* ------------------------------------------------ 手机端答题卡折叠 */
-    console.log('\n[移动端] 答题卡展开与跳题');
+    /* ------------------------------------------------ 手机端 */
+    console.log('\n[移动端] 390px');
     {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
       const page = await ctx.newPage();
-      await page.goto(BASE + '?plan=quick', { waitUntil: 'load' });
+      await page.goto(BASE + '?plan=complete', { waitUntil: 'load' });
+
+      const overflowLanding = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok(overflowLanding <= 1, '首页无横向溢出（' + overflowLanding + 'px）');
+      ok(await page.isVisible('#heroStart'), '首页主按钮可见');
+
       await page.click('#heroStart');
       await enterCode(page, CODE);
       await page.click('#setupStart');
 
       ok(await page.isVisible('#mapToggle'), '手机端显示答题卡折叠按钮');
-      ok(!(await page.isVisible('#mapBody')), '手机端答题卡默认收起');
-      ok((await page.textContent('#mapToggleInfo')).includes('已答 0 / 8'), '折叠按钮显示进度');
-
+      ok(!(await page.isVisible('#mapBody')), '答题卡默认收起');
       await page.click('#mapToggle');
-      ok(await page.isVisible('#mapBody'), '点击后展开答题卡');
-      eq(await page.locator('#quizMap .map-num').count(), 8, '展开后可见 8 个题号');
-
-      await page.locator('#quizMap .map-num').nth(4).click();
+      ok(await page.isVisible('#mapBody'), '点击后展开');
+      const box = await page.locator('#quizMap .map-num').first().boundingBox();
+      ok(box && box.width >= 38 && box.height >= 38, '题号触控目标 ≥ 38px（' + Math.round(box.width) + '×' + Math.round(box.height) + '）');
+      await page.locator('#quizMap .map-num').nth(2).click();
       ok(await page.isHidden('#mapBody'), '跳题后自动收起');
-      eq((await page.textContent('#quizCount')).trim(), '第 5 / 8 题', '手机端也能点题号跳转');
+      eq((await page.textContent('#quizCount')).trim(), '第 3 / 32 题', '手机端可跳题');
 
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      ok(overflow <= 1, '答题页无横向溢出（' + overflow + 'px）');
+      await page.locator('#stepView .opt').first().click();
+      await page.waitForTimeout(500);
+      eq((await page.textContent('#quizCount')).trim(), '第 4 / 32 题', '手机端选中后自动跳题');
+
+      const overflowQuiz = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      ok(overflowQuiz <= 1, '答题页无横向溢出（' + overflowQuiz + 'px）');
+      const btn = await page.locator('[data-nav="prev"]').boundingBox();
+      ok(btn && btn.height >= 40, '按钮高度适合触控（' + Math.round(btn.height) + 'px）');
       await ctx.close();
     }
 
-    /* ---------------------------------------------------- 可选笔记 */
+    /* ------------------------------------------------ 笔记 */
     console.log('\n[笔记] 可选补充背景');
     {
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
       const page = await ctx.newPage();
-      await page.goto(BASE + '?plan=quick', { waitUntil: 'load' });
+      await page.goto(BASE + '?plan=complete', { waitUntil: 'load' });
       await page.click('#heroStart');
       await enterCode(page, CODE);
       await page.click('#setupStart');
 
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < 31; i++) {
         await page.locator('#stepView .opt').first().click();
         await page.locator('[data-nav="next"]').click();
       }
-      eq((await page.textContent('#quizCount')).trim(), '第 8 / 8 题', '到达最后一题');
-      ok(await page.isVisible('.note-box'), '最后一题提供可选笔记');
+      eq((await page.textContent('#quizCount')).trim(), '第 32 / 32 题', '到达最后一题');
       ok(!(await page.isVisible('#noteInput')), '笔记默认收起');
-
       await page.click('.note-box summary');
       await page.fill('#noteInput', '最近刚换工作，同时在照顾家人。');
-      ok((await page.textContent('#noteCount')).trim() !== '0', '字数统计随输入更新');
+      ok((await page.textContent('#noteCount')).trim() !== '0', '字数统计更新');
 
       await page.locator('#stepView .opt').first().click();
       await page.locator('[data-nav="next"]').click();
       ok(await page.isVisible('#screen-report'), '填写笔记后仍能生成报告');
       ok(await page.isVisible('#reportBody .note-report'), '报告展示补充背景');
-      ok((await page.textContent('#reportBody .note-report')).includes('最近刚换工作'), '笔记内容原样展示');
+      ok((await page.textContent('#reportBody .note-report')).includes('最近刚换工作'), '笔记原样展示');
       ok((await page.textContent('#reportBody .note-report')).includes('未参与'), '注明笔记不参与判断');
       await ctx.close();
     }
