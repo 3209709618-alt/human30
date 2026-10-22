@@ -231,7 +231,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   color: var(--ink-2);
   background: rgba(255, 255, 255, 0.02);
 }
-.btn-ghost:hover { border-color: rgba(255, 255, 255, 0.3); color: var(--ink); }
+.btn-ghost:hover { border-color: var(--line-strong); color: var(--ink); }
 
 .btn-block { width: 100%; }
 .btn-sm { padding: 9px 16px; font-size: 13.5px; }
@@ -281,8 +281,8 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .hi-n { font-family: var(--mono); font-size: 11.5px; color: var(--accent-ink); }
-.hi-t { flex: 1; font-size: 13.5px; color: var(--ink-2); }
-.hi-e { font-size: 9.5px; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; }
+.hi-t { flex: 1; font-size: 13.5px; color: var(--ink-2); white-space: nowrap; }
+.hi-e { flex: 0 0 auto; font-size: 11px; letter-spacing: 0.1em; color: var(--dim); text-transform: uppercase; white-space: nowrap; }
 
 .hero h1 {
   font-size: clamp(40px, 9.4vw, 82px);
@@ -383,8 +383,8 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
 .sample-stages > div {
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--line);
 }
 .sample-stages span { display: block; font-size: 11.5px; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
 .sample-stages b { font-size: 14px; font-weight: 500; color: var(--ink); }
@@ -478,7 +478,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.34);
+  color: var(--dim);
 }
 .dim-card p { margin: 10px 0 0; font-size: 13px; line-height: 1.8; color: var(--muted); }
 
@@ -625,7 +625,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   margin-top: 6px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(255, 255, 255, 0.5);
   font-size: 12.5px;
   color: var(--muted);
 }
@@ -723,7 +723,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.map-num:hover { border-color: rgba(255, 255, 255, 0.32); color: var(--ink-2); }
+.map-num:hover { border-color: var(--line-strong); color: var(--ink-2); }
 .map-num:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-num.is-done {
   border-color: rgba(200, 154, 85, 0.45);
@@ -741,7 +741,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   gap: 12px;
   margin-top: 15px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--line);
   font-size: 11.5px;
   color: var(--dim);
 }
@@ -749,7 +749,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
 .lg { width: 8px; height: 8px; border-radius: 3px; display: inline-block; border: 1px solid var(--line); }
 .lg-done { background: var(--accent-soft); border-color: rgba(200, 154, 85, 0.5); }
 .lg-cur { background: var(--accent); border-color: var(--accent-ink); }
-.lg-todo { background: rgba(255, 255, 255, 0.03); }
+.lg-todo { background: rgba(255, 255, 255, 0.5); }
 
 .quiz-head { margin-bottom: 26px; }
 .quiz-meta {
@@ -816,7 +816,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.opt:hover { border-color: rgba(255, 255, 255, 0.24); color: var(--ink); }
+.opt:hover { border-color: var(--line-strong); color: var(--ink); }
 .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .opt .mark {
   width: 17px;
@@ -913,8 +913,8 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   margin: 18px 0 0;
   padding: 13px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.5);
   font-size: 12.5px;
   line-height: 1.8;
   color: var(--muted);
@@ -979,7 +979,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
 .dim-report-head h3 span {
   font-size: 11.5px;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.34);
+  color: var(--dim);
   font-weight: 400;
   text-transform: uppercase;
   margin-left: 6px;
@@ -1147,7 +1147,7 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
 .linkage-q {
   margin: 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--line);
   font-size: 13px;
   line-height: 1.85;
   color: var(--ink);
@@ -1327,7 +1327,7 @@ code {
   font-size: 0.9em;
   padding: 1px 5px;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(22, 23, 27, 0.05);
   color: var(--ink-2);
 }
 
@@ -1925,7 +1925,6 @@ input, textarea { caret-color: var(--accent-ink); }
 .dim-qcount { color: var(--dim); }
 .setup-summary { color: var(--muted); }
 .gate-hint, #gateHint { color: var(--muted); }
-.eyebrow { color: var(--accent-ink); }
 
 /* 动效偏好 */
 @media (prefers-reduced-motion: reduce) {
