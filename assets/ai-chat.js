@@ -10,19 +10,22 @@
   var CFG = root.HUMAN30_CONFIG || {};
   var $ = function (id) { return document.getElementById(id); };
 
+  /* 预设只收「支持浏览器直连」的服务商：CORS 预检必须放行 Authorization 头。
+   * 智谱 open.bigmodel.cn 实测预检不返回 Allow-Headers，浏览器会直接拦截，
+   * 因此不列入预设；用户在自定义里填了智谱地址时会收到明确提示。 */
   var PROVIDERS = [
-    { id: 'zhipu', name: '智谱 AI', tag: 'GLM-4-Flash · 免费',
-      desc: '注册即用，免费额度不限量（限频率），国内直连。推荐先用这家跑通流程。',
-      baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash',
-      signup: 'https://open.bigmodel.cn/' },
+    { id: 'siliconflow', name: '硅基流动', tag: '注册送 ¥14 额度 · 推荐',
+      desc: '一个 Key 调用多家模型，国内直连。默认 GLM-5.3-Flash，额度用完可换平台上的免费小模型。',
+      baseUrl: 'https://api.siliconflow.cn/v1', model: 'zai-org/GLM-5.3-Flash',
+      signup: 'https://siliconflow.cn/' },
     { id: 'deepseek', name: 'DeepSeek', tag: '更强 · 需小额充值',
-      desc: '访谈与长报告质量更好，适合对免费档不满意之后切换。',
+      desc: '官方接口，模型质量高。适合对免费档不满意之后切换。',
       baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat',
       signup: 'https://platform.deepseek.com/' },
-    { id: 'siliconflow', name: '硅基流动', tag: '注册送额度',
-      desc: '一个 Key 调用多家开源模型，国内服务器，延迟低。',
-      baseUrl: 'https://api.siliconflow.cn/v1', model: 'Qwen/Qwen2.5-7B-Instruct',
-      signup: 'https://siliconflow.cn/' },
+    { id: 'tongyi', name: '通义千问', tag: '新用户有免费额度',
+      desc: '阿里云百炼的 OpenAI 兼容接口，新用户可领免费额度。',
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus',
+      signup: 'https://bailian.console.aliyun.com/' },
     { id: 'custom', name: '自定义', tag: '任意 OpenAI 兼容接口',
       desc: '接口地址和模型名自己填，兼容 /chat/completions 协议的服务都可以。',
       baseUrl: '', model: '', signup: '' }
@@ -151,7 +154,9 @@
     var key = $('aiKey').value.trim();
     var err = '';
 
-    if (!key) err = '请填写 API Key。没有 Key 请先到服务商官网注册（卡片上有地址）。';
+    if (/bigmodel\.cn/.test(baseUrl)) {
+      err = '智谱的 API 不支持浏览器直连：它的跨域预检不放行 Authorization 头，请求会被浏览器拦下。请改用硅基流动、DeepSeek 或通义千问。';
+    } else if (!key) err = '请填写 API Key。没有 Key 请先到服务商官网注册（卡片上有地址）。';
     else if (!/^https?:\/\//.test(baseUrl)) err = '接口地址格式不对，应以 http:// 或 https:// 开头。';
     else if (!model) err = '请填写模型名。';
 
@@ -230,6 +235,14 @@
     return msg || ('请求失败（' + status + '）');
   }
 
+  /* 网络层失败（请求根本没发出去或被浏览器拦截）时说人话 */
+  function netErr(e) {
+    if (e && e.name === 'TypeError') {
+      return '请求没能发出（浏览器层拦截）。常见原因：该服务商不支持网页直连（如智谱）、网络中断、或被浏览器插件拦截。可重试，或换一家服务商。';
+    }
+    return (e && e.message) || '未知错误，请重试。';
+  }
+
   function callModel() {
     var s = state.settings;
     var body = {
@@ -284,7 +297,7 @@
       }).catch(function (e) {
         state.busy = false;
         updateChatMeta();
-        showChatErr(e.message, lastCall);
+        showChatErr(netErr(e), lastCall);
       });
     };
     return lastCall();
@@ -317,7 +330,7 @@
       }).catch(function (e) {
         state.busy = false;
         updateChatMeta();
-        showChatErr(e.message, lastCall);
+        showChatErr(netErr(e), lastCall);
       });
     };
     return lastCall();
