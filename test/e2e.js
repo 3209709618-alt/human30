@@ -317,6 +317,16 @@ async function enterCode(page, code) {
       await page.click('[data-track="ai"]');
       await enterCode(page, CODE);
       ok(await page.isVisible('#screen-ai-setup'), 'AI 轨过访问码后进入设置屏');
+      eq(await page.locator('.ai-provider.is-active').count(), 1, '默认有一个服务商被选中');
+      ok((await page.textContent('.ai-provider.is-active .ap-name')).includes('硅基流动'), '默认服务商是硅基流动');
+      ok((await page.inputValue('#aiModel')).includes('GLM-5.3-Flash'), '默认模型是 GLM-5.3-Flash');
+      // 旧版智谱设置应回落新默认，而不是留下发不出去的接口
+      await page.evaluate(() => localStorage.setItem('h30.ai.v1', JSON.stringify({ settings: { provider: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', key: 'sk-old' }, messages: [], report: null, finished: false })));
+      await page.reload({ waitUntil: 'load' });
+      await page.click('[data-track="ai"]');
+      await enterCode(page, CODE);
+      ok((await page.textContent('.ai-provider.is-active .ap-name')).includes('硅基流动'), '旧智谱设置回落到新默认');
+      ok((await page.inputValue('#aiBaseUrl')).includes('siliconflow'), '旧智谱接口地址被替换');
       await page.click('[data-pv="custom"]');
       await page.fill('#aiBaseUrl', 'https://mock.test/v1');
       await page.fill('#aiModel', 'mock-model');

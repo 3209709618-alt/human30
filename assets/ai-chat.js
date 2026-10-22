@@ -64,7 +64,8 @@
 
   function renderSetup() {
     var saved = load();
-    var cur = (saved.settings && saved.settings.provider) || 'zhipu';
+    var known = saved.settings && PROVIDERS.some(function (x) { return x.id === saved.settings.provider; });
+    var cur = known ? saved.settings.provider : PROVIDERS[0].id;
     var p = provider(cur);
 
     $('aiProviderList').innerHTML = PROVIDERS.map(function (x) {
@@ -76,9 +77,9 @@
         '</button>';
     }).join('');
 
-    $('aiBaseUrl').value = (saved.settings && saved.settings.baseUrl) || p.baseUrl;
-    $('aiModel').value = (saved.settings && saved.settings.model) || p.model;
-    $('aiKey').value = (saved.settings && saved.settings.key) || '';
+    $('aiBaseUrl').value = known ? saved.settings.baseUrl : p.baseUrl;
+    $('aiModel').value = known ? saved.settings.model : p.model;
+    $('aiKey').value = known ? saved.settings.key : '';
     renderConsent(p);
     $('aiSetupErr').hidden = true;
     showResume();
@@ -148,7 +149,7 @@
 
   function collectSettings() {
     var pv = $('aiProviderList').querySelector('.ai-provider.is-active');
-    var id = pv ? pv.getAttribute('data-pv') : 'zhipu';
+    var id = pv ? pv.getAttribute('data-pv') : PROVIDERS[0].id;
     var baseUrl = $('aiBaseUrl').value.trim().replace(/\/+$/, '');
     var model = $('aiModel').value.trim();
     var key = $('aiKey').value.trim();
