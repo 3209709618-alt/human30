@@ -1,16 +1,13 @@
 /* ==========================================================================
  * Human3.0 人生评估 —— AI 深聊代理（阿里云函数计算 FC）
  * --------------------------------------------------------------------------
- * 与腾讯云版本逻辑相同：浏览器只调这个函数，Key 只存在函数环境变量里。
- * 使用「事件函数 + HTTP 触发器」：入口为 index.handler。
+ * 双模式入口：同一份 index.handler 同时兼容
+ *   1) 事件函数 + HTTP 触发器：handler(event) -> {statusCode, headers, body}
+ *   2) HTTP 函数：handler(req, resp, context) -> resp.send(...)
+ * 这样不管建的是哪种函数类型，都能跑。
  *
  * 环境变量：
- *   BASE_URL     模型服务商地址，默认 https://api.siliconflow.cn/v1
- *   API_KEY      你的 Key（必填，不要写进代码或仓库）
- *   MODEL        模型名，默认 zai-org/GLM-5.3-Flash
- *   ALLOW_ORIGIN 允许的来源，建议 https://3209709618-alt.github.io
- *   MAX_TOKENS   单次最大输出 token，默认 4096
- *   RATE_LIMIT   每个 IP 每小时最多请求次数，默认 30（尽力而为）
+ *   BASE_URL / API_KEY / MODEL / ALLOW_ORIGIN / MAX_TOKENS / RATE_LIMIT
  * ========================================================================== */
 'use strict';
 
@@ -69,15 +66,16 @@ function rateOk(ip) {
 function parseBody(event) {
   var raw = event.body;
   if (raw === undefined || raw === null) return {};
-  if (event.isBase64Encoded) raw = Buffer.from(raw, 'base64').toString('utf8');
+  if (Buffer.isBuffer(raw)) raw = raw.toString('utf8');
+  if (event.isBase64Encoded && typeof raw === 'string') raw = Buffer.from(raw, 'base64').toString('utf8');
   if (typeof raw !== 'string') return raw;
   return JSON.parse(raw);
 }
 
-exports.handler = async function (event) {
+async function handle(event) {
   event = event || {};
   var origin = header(event, 'origin');
-  var method = String(event.httpMethod || 'POST').toUpperCase();
+  var method = String(event.httpMethod || event.method || 'POST').toUpperCase();
 
   if (method === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders(origin), body: '', isBase64Encoded: false };
@@ -147,4 +145,30 @@ exports.handler = async function (event) {
   } catch (e) {
     return reply(502, { error: { message: '上游请求失败：' + (e && e.message ? e.message : '未知错误') } }, origin);
   }
+}
+
+/* 双模式入口 */
+exports.handler = async function (a, b, c) {
+  // HTTP 函数：a = req, b = resp
+  if (b && typeof b.send === 'function') {
+    var event = {
+      httpMethod: a.method || a.httpMethod || 'POST',
+      headers: a.headers || {},
+      body: a.body,
+      isBase64Encoded: false,
+      requestContext: a.requestContext || {}
+    };
+    var result = await handle(event);
+    if (typeof b.setStatusCode === 'function') b.setStatusCode(result.statusCode);
+    var hs = result.headers || {};
+    Object.keys(hs).forEach(function (k) {
+      if (typeof b.setHeader === 'function') b.setHeader(k, hs[k]);
+    });
+    b.send(result.body);
+    return;
+  }
+  // 事件函数：a = event
+  return handle(a);
 };
+
+exports.main_handler = exports.handler;
