@@ -1,38 +1,26 @@
 /* ==========================================================================
- * Human3.0人生评估 —— AI 深聊版控制器
+ * Human3.0人生评估 —— AI 深聊控制器（合并后的单流程）
  * --------------------------------------------------------------------------
- * 设置屏（服务商与 Key）→ 访谈屏（对话循环）→ 报告屏（结构化渲染）。
- * 状态只存 localStorage（docs/adr/0003）；Key 不经服务端（docs/adr/0002）。
+ * 32 题 → 初步画像 → AI 深聊（4–8 问）→ 最终报告。
+ * Key 不在前端：页面只调用站点维护者的云函数代理，代理持有 Key。
+ * 对话只存在内存里，刷新即清空（不写浏览器存储）。
  * ========================================================================== */
 (function (root) {
   var D = root.H30Data, AI = root.H30AI;
-  var LS_KEY = 'h30.ai.v1';
   var CFG = root.HUMAN30_CONFIG || {};
   var $ = function (id) { return document.getElementById(id); };
 
-  /* 预设只收「支持浏览器直连」的服务商：CORS 预检必须放行 Authorization 头。
-   * 智谱 open.bigmodel.cn 实测预检不返回 Allow-Headers，浏览器会直接拦截，
-   * 因此不列入预设；用户在自定义里填了智谱地址时会收到明确提示。 */
-  var PROVIDERS = [
-    { id: 'siliconflow', name: '硅基流动', tag: '注册送 ¥14 额度 · 推荐',
-      desc: '一个 Key 调用多家模型，国内直连。默认 GLM-5.3-Flash，额度用完可换平台上的小模型。',
-      baseUrl: 'https://api.siliconflow.cn/v1', model: 'zai-org/GLM-5.3-Flash',
-      signup: 'https://siliconflow.cn/' },
-    { id: 'deepseek', name: 'DeepSeek', tag: '更强 · 需小额充值',
-      desc: '官方接口，模型质量高。适合对基础档不满意之后切换。',
-      baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat',
-      signup: 'https://platform.deepseek.com/' },
-    { id: 'tongyi', name: '通义千问', tag: '新用户有赠送额度',
-      desc: '阿里云百炼的 OpenAI 兼容接口，新用户可领赠送额度。',
-      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus',
-      signup: 'https://bailian.console.aliyun.com/' },
-    { id: 'custom', name: '自定义', tag: '任意 OpenAI 兼容接口',
-      desc: '接口地址和模型名自己填，兼容 /chat/completions 协议的服务都可以。',
-      baseUrl: '', model: '', signup: '' }
-  ];
+  var MAX_TURNS = (AI && AI.MAX_TURNS) || 8;
 
-  var state = { settings: null, messages: [], report: null, finished: false, busy: false };
-  var lastCall = null;
+  var state = {
+    messages: [],      // 展示/接口共用：以 assistant 的第一问开始
+    report: null,      // AI 最终报告
+    ruleReport: null,  // 规则引擎初步报告
+    payload: null,     // { answers, questions, note, report }
+    busy: false,
+    finished: false
+  };
+
   var counterReady = false;
 
   /* ------------------------------------------------------------ 基础工具 */
@@ -43,172 +31,76 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  function load() {
-    try { return JSON.parse(root.localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; }
-  }
-
-  function save() {
-    try { root.localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式下忽略 */ }
-  }
-
-  function provider(id) {
-    for (var i = 0; i < PROVIDERS.length; i++) if (PROVIDERS[i].id === id) return PROVIDERS[i];
-    return PROVIDERS[0];
-  }
-
   function turnCount() {
-    return state.messages.filter(function (m) { return m.role === 'user'; }).length;
+    return state.messages.filter(function (m) { return m.role === 'assistant'; }).length;
   }
 
-  /* ------------------------------------------------------------ 设置屏 */
-
-  function renderSetup() {
-    var saved = load();
-    var known = saved.settings && PROVIDERS.some(function (x) { return x.id === saved.settings.provider; });
-    var cur = known ? saved.settings.provider : PROVIDERS[0].id;
-    var p = provider(cur);
-
-    $('aiProviderList').innerHTML = PROVIDERS.map(function (x) {
-      var on = x.id === cur;
-      return '<button class="ai-provider' + (on ? ' is-active' : '') + '" type="button" data-pv="' + x.id + '" aria-pressed="' + on + '">' +
-        '<span class="ap-top"><span class="ap-name">' + esc(x.name) + '</span><span class="ap-tag">' + esc(x.tag) + '</span></span>' +
-        '<span class="ap-desc">' + esc(x.desc) + '</span>' +
-        (x.signup ? '<span class="ap-link">注册 / 获取 Key：' + esc(x.signup.replace(/^https?:\/\//, '')) + '</span>' : '') +
-        '</button>';
-    }).join('');
-
-    $('aiBaseUrl').value = known ? saved.settings.baseUrl : p.baseUrl;
-    $('aiModel').value = known ? saved.settings.model : p.model;
-    $('aiKey').value = known ? saved.settings.key : '';
-    renderConsent(p);
-    $('aiSetupErr').hidden = true;
-    showResume();
+  function proxyUrl() {
+    return String(CFG.AI_PROXY_URL || '').trim();
   }
 
-  /* 有历史对话时，设置屏提供「继续上次」而不是只能清空重来 */
-  function showResume() {
-    var saved = load();
-    var turns = (saved.messages || []).filter(function (m) { return m.role === 'user'; }).length;
-    var row = $('aiResumeRow');
-    if (turns > 0) {
-      row.hidden = false;
-      $('aiResume').textContent = '继续上次访谈（已聊 ' + turns + ' 轮）';
-      $('aiSetupStart').textContent = '开始新访谈';
-    } else {
-      row.hidden = true;
-      $('aiSetupStart').textContent = '开始访谈';
+  function apiMessages() {
+    var context = AI.buildContext(state.payload || {});
+    return [{ role: 'user', content: context }].concat(state.messages);
+  }
+
+  /* ------------------------------------------------------------ 网络层 */
+
+  function friendlyError(status, msg) {
+    if (status === 401) return 'AI 服务的 Key 无效（401）。请联系站点维护者。';
+    if (status === 402) return 'AI 服务的额度不足（402）。请联系站点维护者。';
+    if (status === 403) return '当前来源不被允许（403）。请联系站点维护者。';
+    if (status === 429) return '现在使用的人有点多（429），请稍等一两分钟再试。';
+    if (status >= 500) return 'AI 服务暂时不可用（' + status + '）。稍后再试。';
+    return msg || ('请求失败（' + status + '）');
+  }
+
+  function netErr(e) {
+    if (e && e.name === 'TypeError') {
+      return '请求没能发出：网络中断，或 AI 代理还没配置。';
     }
-    $('aiResumeReport').hidden = !saved.report;
+    return (e && e.message) || '未知错误，请重试。';
   }
 
-  function resumeInterview() {
-    var saved = load();
-    if (!saved.settings) return;
-    state.settings = saved.settings;
-    state.messages = saved.messages || [];
-    state.report = saved.report || null;
-    state.finished = !!saved.finished;
-    state.busy = false;
-    lastCall = null;
-    mountChat();
-    if (root.H30App) root.H30App.go('ai-chat');
-  }
-
-  function viewLastReport() {
-    var saved = load();
-    if (!saved.report) return;
-    state.settings = saved.settings;
-    state.messages = saved.messages || [];
-    state.report = saved.report;
-    state.finished = true;
-    renderReport();
-    if (root.H30App) root.H30App.go('ai-report');
-  }
-
-  function renderConsent(p) {
-    $('aiConsentText').innerHTML =
-      '开始即表示你理解并同意：' +
-      '<b>①</b> 你的回答将通过浏览器直接发送到你选择的模型服务商（当前：<b>' + esc(p.name) + '</b>），' +
-      '我们不接收、不留存、不转发；' +
-      '<b>②</b> 对话记录只保存在你这台设备的浏览器里，清除浏览器数据或更换设备都会永久丢失；' +
-      '<b>③</b> 页面包含一个无 Cookie 的访问量计数器，只记录页面流转，不记录任何回答内容。';
-  }
-
-  function chooseProvider(id) {
-    var p = provider(id);
-    $('aiProviderList').querySelectorAll('[data-pv]').forEach(function (btn) {
-      var on = btn.getAttribute('data-pv') === id;
-      btn.classList.toggle('is-active', on);
-      btn.setAttribute('aria-pressed', String(on));
+  function callModel(messages) {
+    var url = proxyUrl();
+    if (!url) {
+      return Promise.reject(new Error('AI 深聊还没有配置代理地址（AI_PROXY_URL 为空）。'));
+    }
+    var body = {
+      messages: [{ role: 'system', content: AI.buildSystemPrompt() }].concat(messages),
+      temperature: 0.7,
+      max_tokens: 4096
+    };
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) {
+          var m = j && j.error && (j.error.message || j.error);
+          throw new Error(friendlyError(r.status, m));
+        }
+        if (j && typeof j.content === 'string' && j.content) return j.content;
+        var c = j && j.choices && j.choices[0] && j.choices[0].message;
+        if (c && c.content) return c.content;
+        throw new Error('AI 返回了空内容，请重试。');
+      });
     });
-    $('aiBaseUrl').value = p.baseUrl;
-    $('aiModel').value = p.model;
-    renderConsent(p);
-    $('aiSetupErr').hidden = true;
-  }
-
-  function collectSettings() {
-    var pv = $('aiProviderList').querySelector('.ai-provider.is-active');
-    var id = pv ? pv.getAttribute('data-pv') : PROVIDERS[0].id;
-    var baseUrl = $('aiBaseUrl').value.trim().replace(/\/+$/, '');
-    var model = $('aiModel').value.trim();
-    var key = $('aiKey').value.trim();
-    var err = '';
-
-    if (/bigmodel\.cn/.test(baseUrl)) {
-      err = '智谱的 API 不支持浏览器直连：它的跨域预检不放行 Authorization 头，请求会被浏览器拦下。请改用硅基流动、DeepSeek 或通义千问。';
-    } else if (!key) err = '请填写 API Key。没有 Key 请先到服务商官网注册（卡片上有地址）。';
-    else if (!/^https?:\/\//.test(baseUrl)) err = '接口地址格式不对，应以 http:// 或 https:// 开头。';
-    else if (!model) err = '请填写模型名。';
-
-    if (err) {
-      $('aiSetupErr').textContent = err;
-      $('aiSetupErr').hidden = false;
-      return null;
-    }
-    return { provider: id, providerName: provider(id).name, baseUrl: baseUrl, model: model, key: key };
-  }
-
-  function startInterview() {
-    var s = collectSettings();
-    if (!s) return;
-    state.settings = s;
-    state.messages = [];
-    state.report = null;
-    state.finished = false;
-    state.busy = false;
-    lastCall = null;
-    save();
-    mountChat();
-    if (root.H30App) root.H30App.go('ai-chat');
   }
 
   /* ------------------------------------------------------------ 访谈屏 */
 
-  function mountChat() {
-    var saved = load();
-    if (!state.settings && saved.settings) state.settings = saved.settings;
-    if (!state.messages.length && saved.messages) state.messages = saved.messages;
-    if (!state.report && saved.report) state.report = saved.report;
-    if (saved.finished) state.finished = saved.finished;
-
-    // 首次进入：开场白由本地渲染，不消耗一次 API 调用
-    if (!state.messages.length) {
-      state.messages.push({ role: 'assistant', content: AI.OPENING });
-      save();
-    }
-    renderMessages();
-    $('aiInput').value = '';
-    $('aiChatErr').hidden = true;
-    updateChatMeta();
-  }
-
   function renderMessages() {
-    var html = state.messages.map(function (m) {
+    var html = '<div class="ai-row ai"><div class="ai-bubble">' + esc(AI.OPENING).replace(/\n/g, '<br>') + '</div></div>';
+    html += state.messages.map(function (m) {
       var who = m.role === 'user' ? 'user' : 'ai';
-      var body = esc(m.content).replace(/\n/g, '<br>');
-      return '<div class="ai-row ' + who + '"><div class="ai-bubble">' + body + '</div></div>';
+      return '<div class="ai-row ' + who + '"><div class="ai-bubble">' + esc(m.content).replace(/\n/g, '<br>') + '</div></div>';
     }).join('');
+    if (state.busy) {
+      html += '<div class="ai-row ai"><div class="ai-bubble ai-thinking">正在思考…</div></div>';
+    }
     $('aiMsgList').innerHTML = html;
     var box = $('aiMsgList');
     box.scrollTop = box.scrollHeight;
@@ -216,64 +108,58 @@
 
   function updateChatMeta() {
     var info = $('aiChatMeta');
-    if (!info) return;
-    var t = turnCount();
-    info.innerHTML = '已聊 <b>' + t + '</b> 轮 · 上限 16 问' +
-      (state.finished ? ' · <span class="ai-done">可以生成报告了</span>' : '');
+    if (info) {
+      var t = turnCount();
+      info.innerHTML = '已追问 <b>' + t + '</b> / ' + MAX_TURNS + ' 轮' +
+        (state.finished ? ' · <span class="ai-done">可以生成报告了</span>' : '');
+    }
+    var send = $('aiSend');
+    if (send) send.disabled = state.busy;
+    var input = $('aiInput');
+    if (input) input.disabled = state.busy;
     var fin = $('aiFinish');
     if (fin) {
-      fin.classList.toggle('btn-primary', state.finished);
-      fin.classList.toggle('btn-ghost', !state.finished);
-      fin.textContent = state.finished ? '生成报告' : '结束访谈并生成报告';
+      fin.disabled = state.busy || !state.messages.length;
+      fin.textContent = state.finished ? '生成最终报告' : '结束深聊并生成报告';
     }
-  }
-
-  function friendlyError(status, msg) {
-    if (status === 401) return 'Key 无效或已过期（401）。请确认复制完整、没有多余空格。';
-    if (status === 402) return '账户余额不足（402）。基础档通常不会出现这个，检查是否选错了服务商。';
-    if (status === 429) return '触发限流（429）。基础额度有频率限制，等一两分钟再试。';
-    if (status >= 500) return '服务商暂时不可用（' + status + '）。稍后再试，或换一家服务商。';
-    return msg || ('请求失败（' + status + '）');
-  }
-
-  /* 网络层失败（请求根本没发出去或被浏览器拦截）时说人话 */
-  function netErr(e) {
-    if (e && e.name === 'TypeError') {
-      return '请求没能发出（浏览器层拦截）。常见原因：该服务商不支持网页直连（如智谱）、网络中断、或被浏览器插件拦截。可重试，或换一家服务商。';
-    }
-    return (e && e.message) || '未知错误，请重试。';
-  }
-
-  function callModel() {
-    var s = state.settings;
-    var body = {
-      model: s.model,
-      messages: [{ role: 'system', content: AI.buildSystemPrompt() }].concat(state.messages),
-      temperature: 0.7,
-      max_tokens: 4096
-    };
-    return fetch(s.baseUrl + '/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.key },
-      body: JSON.stringify(body)
-    }).then(function (r) {
-      return r.json().catch(function () { return {}; }).then(function (j) {
-        if (!r.ok) throw new Error(friendlyError(r.status, j && j.error && j.error.message));
-        var c = j && j.choices && j.choices[0] && j.choices[0].message;
-        if (!c || !c.content) throw new Error('服务商返回了空内容，请重试。');
-        return c.content;
-      });
-    });
   }
 
   function showChatErr(msg, retry) {
-    $('aiChatErr').innerHTML = '<span>' + esc(msg) + '</span>' +
-      (retry ? '<button class="btn btn-ghost btn-sm" type="button" id="aiRetry">重试</button>' : '');
-    $('aiChatErr').hidden = false;
+    var el = $('aiChatErr');
+    el.innerHTML = '<span>' + esc(msg) + '</span>' +
+      (retry ? '<button class="btn btn-ghost btn-sm" type="button" id="aiRetry">重试</button>' : '') +
+      '<button class="btn btn-ghost btn-sm" type="button" id="aiBackPrelim">返回初步画像</button>';
+    el.hidden = false;
     var btn = $('aiRetry');
-    if (btn) btn.addEventListener('click', function () {
-      $('aiChatErr').hidden = true;
-      if (retry) retry();
+    if (btn) btn.addEventListener('click', function () { el.hidden = true; if (retry) retry(); });
+    var back = $('aiBackPrelim');
+    if (back) back.addEventListener('click', function () { if (root.H30App) root.H30App.go('prelim'); });
+  }
+
+  function mountChat() {
+    renderMessages();
+    $('aiInput').value = '';
+    $('aiChatErr').hidden = true;
+    updateChatMeta();
+  }
+
+  /* 第一问：把 32 题上下文作为一条 user 消息发出去，让模型直接问第一个问题 */
+  function askFirst() {
+    if (state.busy) return;
+    state.busy = true;
+    state.finished = false;
+    updateChatMeta();
+    renderMessages();
+    callModel(apiMessages()).then(function (reply) {
+      state.messages.push({ role: 'assistant', content: reply });
+      state.busy = false;
+      updateChatMeta();
+      renderMessages();
+    }).catch(function (e) {
+      state.busy = false;
+      updateChatMeta();
+      renderMessages();
+      showChatErr(netErr(e), askFirst);
     });
   }
 
@@ -282,70 +168,90 @@
     if (!text || state.busy) return;
     state.messages.push({ role: 'user', content: text });
     state.busy = true;
-    save();
-    renderMessages();
     updateChatMeta();
+    renderMessages();
     $('aiInput').value = '';
 
-    lastCall = function () {
-      return callModel().then(function (reply) {
-        state.messages.push({ role: 'assistant', content: reply });
-        if (reply.indexOf('访谈完成') !== -1) state.finished = true;
-        state.busy = false;
-        save();
-        renderMessages();
-        updateChatMeta();
-      }).catch(function (e) {
-        state.busy = false;
-        updateChatMeta();
-        showChatErr(netErr(e), lastCall);
+    callModel(apiMessages()).then(function (reply) {
+      state.messages.push({ role: 'assistant', content: reply });
+      state.busy = false;
+      updateChatMeta();
+      renderMessages();
+
+      // 模型若已输出报告 json，直接进入最终报告
+      var parsed = AI.parseReport(reply);
+      if (parsed.ok) {
+        state.report = parsed.data;
+        state.finished = true;
+        renderReport();
+        if (root.H30App) root.H30App.go('ai-report');
+        return;
+      }
+      if (reply.indexOf('访谈完成') !== -1) state.finished = true;
+      updateChatMeta();
+    }).catch(function (e) {
+      state.busy = false;
+      updateChatMeta();
+      renderMessages();
+      showChatErr(netErr(e), function () {
+        state.messages.pop(); // 移除未成功发送的用户消息，避免重复
+        sendUser(text);
       });
-    };
-    return lastCall();
+    });
   }
 
   function finishInterview() {
-    if (state.busy) return;
-    if (!state.messages.length) return;
+    if (state.busy || !state.messages.length) return;
     state.busy = true;
     updateChatMeta();
+    renderMessages();
     var trigger = { role: 'user', content: '请现在输出最终报告的 json。' };
-    var before = state.messages.slice();
 
-    lastCall = function () {
-      state.messages = before.concat([trigger]);
-      return callModel().then(function (reply) {
-        var parsed = AI.parseReport(reply);
-        if (!parsed.ok) {
-          state.busy = false;
-          updateChatMeta();
-          showChatErr('报告解析失败：' + parsed.error + '。可以再点一次「生成报告」重试。', lastCall);
-          return;
-        }
-        state.report = parsed.data;
-        state.busy = false;
+    callModel(apiMessages().concat([trigger])).then(function (reply) {
+      state.messages.push(trigger);
+      state.messages.push({ role: 'assistant', content: reply });
+      var parsed = AI.parseReport(reply);
+      state.busy = false;
+      if (!parsed.ok) {
         state.finished = true;
-        save();
-        renderReport();
-        if (root.H30App) root.H30App.go('ai-report');
-      }).catch(function (e) {
-        state.busy = false;
         updateChatMeta();
-        showChatErr(netErr(e), lastCall);
-      });
-    };
-    return lastCall();
+        renderMessages();
+        showChatErr('报告解析失败：' + parsed.error + '。可以再点一次「生成最终报告」重试。', finishInterview);
+        return;
+      }
+      state.report = parsed.data;
+      state.finished = true;
+      updateChatMeta();
+      renderReport();
+      if (root.H30App) root.H30App.go('ai-report');
+    }).catch(function (e) {
+      state.busy = false;
+      updateChatMeta();
+      renderMessages();
+      showChatErr(netErr(e), finishInterview);
+    });
+  }
+
+  function startInterview(payload) {
+    state.payload = payload || {};
+    state.ruleReport = state.payload.report || null;
+    state.messages = [];
+    state.report = null;
+    state.busy = false;
+    state.finished = false;
+    mountChat();
+    if (root.H30App) root.H30App.go('ai-chat');
+    askFirst();
   }
 
   function restart() {
-    if (!root.confirm('重新开始一轮访谈？当前对话与报告会被清空。')) return;
+    if (!root.confirm('重新开始这一轮深聊？当前对话与最终报告会被清空。')) return;
     state.messages = [];
     state.report = null;
     state.finished = false;
     state.busy = false;
-    lastCall = null;
-    save();
     mountChat();
+    askFirst();
   }
 
   /* ------------------------------------------------------------ 报告屏 */
@@ -355,18 +261,27 @@
   var CONF_CN = { high: '高', medium: '中', low: '低' };
   var VERDICT_CN = { hold: '暂不建议使用加速器', caution: '可以谨慎探索', assess: '可以进行有明确目标的风险评估' };
 
-  function qName(id) { return (D.DIMENSIONS.filter(function (d) { return d.id === id; })[0] || {}).name || AI.QUADRANT_CN[id] || id; }
+  function qName(id) {
+    return (D.DIMENSIONS.filter(function (d) { return d.id === id; })[0] || {}).name || AI.QUADRANT_CN[id] || id;
+  }
+
+  function ruleRow(id) {
+    if (!state.ruleReport || !state.ruleReport.rows) return null;
+    return state.ruleReport.rows.filter(function (r) { return r.id === id; })[0] || null;
+  }
 
   function quadrantCard(q) {
     var strengths = (q.strengths || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
     var gaps = (q.gaps || []).map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('');
+    var base = ruleRow(q.id);
     return '<article class="dim-report">' +
       '<div class="dim-report-head"><h3>' + esc(qName(q.id)) + '</h3></div>' +
       '<div class="stage-row">' +
-        '<div class="stage-box"><p class="sb-k">发展阶段</p><p class="sb-v">' + esc(LEVEL_CN[q.level] || q.level) + '</p></div>' +
-        '<div class="stage-box"><p class="sb-k">转变阶段</p><p class="sb-v">' + esc(PHASE_CN[q.phase] || q.phase) + '</p></div>' +
+        '<div class="stage-box"><p class="sb-k">发展阶段 · 深聊判断</p><p class="sb-v">' + esc(LEVEL_CN[q.level] || q.level) + '</p></div>' +
+        '<div class="stage-box"><p class="sb-k">转变阶段 · 深聊判断</p><p class="sb-v">' + esc(PHASE_CN[q.phase] || q.phase) + '</p></div>' +
         '<div class="stage-box"><p class="sb-k">置信度</p><p class="sb-v">' + esc(CONF_CN[q.confidence] || q.confidence) + '</p></div>' +
       '</div>' +
+      (base ? '<p class="summary"><b>规则基线：</b>' + esc(base.levelLabel + ' / ' + base.phaseLabel) + '</p>' : '') +
       '<p class="summary"><b>证据：</b>' + esc(q.evidence) + '</p>' +
       '<p class="r-label">已经形成的优势</p><ul class="r-list">' + (strengths || '<li>（未提及）</li>') + '</ul>' +
       '<p class="r-label">真实缺口</p><ul class="r-list watch">' + (gaps || '<li>（未提及）</li>') + '</ul>' +
@@ -390,8 +305,8 @@
 
     $('aiReportMeta').innerHTML =
       '<span>' + esc(new Date().toLocaleString('zh-CN', { hour12: false })) + '</span>' +
-      '<span>AI 深聊版 · ' + turnCount() + ' 轮对话</span>' +
-      '<span>' + esc(state.settings.providerName) + ' · ' + esc(state.settings.model) + '</span>';
+      '<span>32 题 + ' + turnCount() + ' 轮深聊</span>' +
+      '<span>HUMAN 3.0 深度报告</span>';
 
     var html = '<p class="report-overview">' + esc(r.metatype.why) + '</p>';
 
@@ -440,6 +355,13 @@
       '<p class="summary"><b>避免思考外包：</b>' + esc(r.accelerator.outsourcingRisk) + '</p>' +
       '<p class="summary"><b>依赖信号：</b>' + esc(r.accelerator.dependencySignals) + '</p></div>';
 
+    if (r.comparable && r.comparable.length) {
+      html += '<div class="note-card" style="margin-top:12px"><h3>可比的类型</h3><ul class="r-list">' +
+        r.comparable.map(function (x) {
+          return '<li><b>' + esc(x.name) + '</b>：' + esc(x.similar) + '；' + esc(x.difference) + '</li>';
+        }).join('') + '</ul></div>';
+    }
+
     html += '<div class="note-card" style="margin-top:12px"><h3>关键警告</h3>' +
       '<ul class="r-list watch">' +
       '<li><b>回归触发点：</b>' + esc(r.warnings.regressionTrigger) + '</li>' +
@@ -451,10 +373,9 @@
     html += '<div class="ai-feedback"><p class="tc-label">最后的真实反馈</p>' +
       '<p>' + esc(r.finalFeedback).replace(/\n/g, '<br>') + '</p></div>';
 
-    html += '<div class="report-ai"><strong>关于这份报告：</strong>由 AI 访谈官根据 ' + turnCount() +
-      ' 轮对话生成，内容出自模型判断，可能出错或不完整；它同样不是心理、医疗或职业诊断。' +
-      '<br>你的回答已通过浏览器直接发送至 ' + esc(state.settings.providerName) +
-      '，我们未接收、未留存；对话记录只保存在本机浏览器。</div>';
+    html += '<div class="report-ai"><strong>关于这份报告：</strong>它由 AI 访谈官基于你的 32 题答案和 ' + turnCount() +
+      ' 轮深聊生成，内容出自模型判断，可能出错或不完整；它不是心理、医疗或职业诊断。' +
+      '<br>你的回答和对话只发送给本站配置的模型服务商，用于生成本次报告；本站不额外留存。</div>';
 
     $('aiReportBody').innerHTML = html;
   }
@@ -463,8 +384,8 @@
     var r = state.report;
     if (!r) return '';
     var L = [];
-    L.push('HUMAN 3.0 多维发展评估（AI 深聊版）');
-    L.push('生成时间：' + new Date().toLocaleString('zh-CN', { hour12: false }) + ' · ' + turnCount() + ' 轮对话');
+    L.push('HUMAN 3.0 深度报告');
+    L.push('生成时间：' + new Date().toLocaleString('zh-CN', { hour12: false }) + ' · 32 题 + ' + turnCount() + ' 轮深聊');
     L.push('');
     L.push('【元类型】' + r.metatype.name);
     L.push(r.metatype.why);
@@ -479,8 +400,10 @@
     L.push('');
     L.push('【四个象限】');
     r.quadrants.forEach(function (q) {
+      var base = ruleRow(q.id);
       L.push('—— ' + qName(q.id) + '（' + (LEVEL_CN[q.level] || q.level) + ' / ' + (PHASE_CN[q.phase] || q.phase) +
         ' / 置信度 ' + (CONF_CN[q.confidence] || q.confidence) + '）');
+      if (base) L.push('规则基线：' + base.levelLabel + ' / ' + base.phaseLabel);
       L.push('证据：' + q.evidence);
       L.push('优势：' + (q.strengths || []).join('；'));
       L.push('缺口：' + (q.gaps || []).join('；'));
@@ -527,6 +450,13 @@
     L.push('避免思考外包：' + r.accelerator.outsourcingRisk);
     L.push('依赖信号：' + r.accelerator.dependencySignals);
     L.push('');
+    if (r.comparable && r.comparable.length) {
+      L.push('【可比的类型】');
+      r.comparable.forEach(function (x) {
+        L.push('- ' + x.name + '：' + x.similar + '；' + x.difference);
+      });
+      L.push('');
+    }
     L.push('【关键警告】');
     L.push('回归触发点：' + r.warnings.regressionTrigger);
     L.push('虚假成长陷阱：' + r.warnings.fakeGrowthTrap);
@@ -536,10 +466,9 @@
     L.push('【最后的真实反馈】');
     L.push(r.finalFeedback);
     L.push('');
-    L.push('—— 本报告由 AI 根据 ' + turnCount() + ' 轮对话生成，仅供自我探索参考，' +
-      '不是心理、医疗或职业诊断，也不是经过验证的客观测评。理论框架参考 Dan Koe 的 HUMAN 3.0。');
+    L.push('—— 本报告由 AI 基于 32 题答案与 ' + turnCount() + ' 轮深聊生成，仅供自我探索参考，' +
+      '不是心理、医疗或职业诊断。理论框架参考 Dan Koe 的 HUMAN 3.0。');
     return L.join('\n');
-
   }
 
   function copyReport() {
@@ -569,7 +498,7 @@
     document.body.removeChild(ta);
   }
 
-  /* ---------------------------------------------------- 完成率计数器（ADR-0005） */
+  /* ---------------------------------------------------- 完成率计数器 */
 
   function ensureCounter() {
     var url = CFG.GOATCOUNTER_URL;
@@ -592,27 +521,14 @@
   /* ------------------------------------------------------------ 初始化 */
 
   function init() {
-    $('aiProviderList').addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-pv]');
-      if (btn) chooseProvider(btn.getAttribute('data-pv'));
-    });
-    $('aiSetupStart').addEventListener('click', startInterview);
-    $('aiSetupBack').addEventListener('click', function () {
-      if (root.H30App) root.H30App.go('landing');
-    });
-    $('aiResume').addEventListener('click', resumeInterview);
-    $('aiResumeReport').addEventListener('click', viewLastReport);
-
-    $('aiSend').addEventListener('click', function () {
-      sendUser($('aiInput').value);
-    });
+    $('aiSend').addEventListener('click', function () { sendUser($('aiInput').value); });
     $('aiInput').addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendUser($('aiInput').value);
       }
     });
-    $('aiFinish').addEventListener('click', function () { finishInterview(); });
+    $('aiFinish').addEventListener('click', finishInterview);
     $('aiRestartChat').addEventListener('click', restart);
 
     $('aiReportCopy').addEventListener('click', copyReport);
@@ -625,12 +541,10 @@
     });
   }
 
-  /* 由 app.js 的 go() 在切屏时调用 */
   function onScreen(name) {
-    if (name.indexOf('ai-') !== 0) return;
+    if (name !== 'ai-chat' && name !== 'ai-report') return;
     ensureCounter();
     countView(name);
-    if (name === 'ai-setup') renderSetup();
     if (name === 'ai-chat') mountChat();
     if (name === 'ai-report') renderReport();
   }
@@ -638,7 +552,6 @@
   root.H30Chat = {
     init: init,
     onScreen: onScreen,
-    renderSetup: renderSetup,
     startInterview: startInterview,
     restart: restart,
     state: state

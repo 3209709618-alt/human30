@@ -125,14 +125,18 @@ async function newPage(browser, query) {
       ok(await page.isVisible('#screen-quiz'), '未答完不生成报告');
       eq((await page.textContent('#quizCount')).trim(), '第 2 / 32 题', '自动跳到第一道未答题');
 
-      /* ------------------------------------------------ 答完并出报告 */
+      /* ------------------------------------------------ 答完并出初步画像 */
       for (let i = 0; i < 40; i++) {
-        if (await page.isVisible('#screen-report')) break;
+        if (await page.isVisible('#screen-prelim')) break;
         await page.locator('#stepView .opt').nth(i % 3).click();
         await page.locator('[data-nav="next"]').click();
       }
 
-      ok(await page.isVisible('#screen-report'), '答完后生成报告');
+      ok(await page.isVisible('#screen-prelim'), '答完后进入初步画像');
+      ok((await page.textContent('#prelimBody')).includes('元类型'), '初步画像含元类型');
+
+      await page.click('#prelimFull');
+      ok(await page.isVisible('#screen-report'), '可查看完整规则报告');
       eq(await page.locator('#reportBody .dim-report').count(), 4, '报告覆盖四个维度');
       eq(await page.locator('#reportBody .type-grid').count(), 1, '生成元类型与原型');
       eq(await page.locator('#reportBody .advice-box').count(), 4, '每个维度一条建议');
@@ -238,7 +242,9 @@ async function newPage(browser, query) {
 
       await page.locator('#stepView .opt').first().click();
       await page.locator('[data-nav="next"]').click();
-      ok(await page.isVisible('#screen-report'), '填写笔记后仍能生成报告');
+      ok(await page.isVisible('#screen-prelim'), '填写笔记后仍能生成初步画像');
+      await page.click('#prelimFull');
+      ok(await page.isVisible('#screen-report'), '可查看完整规则报告');
       ok(await page.isVisible('#reportBody .note-report'), '报告展示补充背景');
       ok((await page.textContent('#reportBody .note-report')).includes('最近刚换工作'), '笔记原样展示');
       ok((await page.textContent('#reportBody .note-report')).includes('未参与'), '注明笔记不参与判断');
@@ -248,7 +254,7 @@ async function newPage(browser, query) {
 
     /* ------------------------------------------------ AI 深聊版（mocked API） */
     {
-      console.log('\n[AI 深聊版] mocked 模型接口');
+      console.log('\n[单流程] 32 题 → 初步画像 → AI 深聊 → 最终报告');
       const { ctx, page } = await newPage(browser);
       const reportJson = {
         metatype: { name: '错位成长型', why: '四个象限不在同一水平线上。', strongest: 'mind', weakest: 'body', unique: '想法多、行动少。', basis: '第 1、3 轮回答' },
@@ -268,96 +274,81 @@ async function newPage(browser, query) {
         },
         accelerator: { verdict: 'caution', missingBase: '稳定节奏', aiUse: '辅助不代劳', outsourcingRisk: '先自己写再对比', dependencySignals: '不思考就问' },
         warnings: { regressionTrigger: '连续加班', fakeGrowthTrap: '囤课', chainRisk: '身体拖垮全部', selfDeception: '我在准备' },
+        comparable: [{ name: '反复回放的观察者', similar: '都在用思考代替行动', difference: '你更愿意做小实验' }],
         finalFeedback: '你真正卡住的地方不是想不清楚，是身体撑不住你想的事。'
       };
       let calls = 0;
       let failMode = false;
-      await page.route('**/v1/chat/completions', route => {
+      await page.route('**/mock-proxy', route => {
         calls++;
         if (failMode) {
           route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: { message: 'invalid key' } }) });
           return;
         }
         const body = route.request().postDataJSON();
-        const last = body.messages[body.messages.length - 1].content || '';
-        const isReport = last.includes('json');
+        const msgs = body.messages || [];
+        const last = (msgs[msgs.length - 1] || {}).content || '';
+        const assistantTurns = msgs.filter(m => m.role === 'assistant').length;
+        const isReport = last.includes('json') || assistantTurns >= 2;
         route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            choices: [{
-              message: {
-                role: 'assistant',
-                content: isReport
-                  ? '访谈完成，我现在整理报告。\n```json\n' + JSON.stringify(reportJson) + '\n```'
-                  : '能说说最近一次让你改变看法的事吗？'
-              }
-            }]
+            content: isReport
+              ? '访谈完成，我现在整理报告。\n```json\n' + JSON.stringify(reportJson) + '\n```'
+              : '能说一个最近的具体例子吗？'
           })
         });
       });
 
-      await page.click('[data-track="ai"]');
-      ok(await page.isVisible('#screen-ai-setup'), 'AI 轨进入设置屏');
-      eq(await page.locator('.ai-provider.is-active').count(), 1, '默认有一个服务商被选中');
-      ok((await page.textContent('.ai-provider.is-active .ap-name')).includes('硅基流动'), '默认服务商是硅基流动');
-      ok((await page.inputValue('#aiModel')).includes('GLM-5.3-Flash'), '默认模型是 GLM-5.3-Flash');
-      // 旧版智谱设置应回落新默认，而不是留下发不出去的接口
-      await page.evaluate(() => localStorage.setItem('h30.ai.v1', JSON.stringify({ settings: { provider: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', key: 'sk-old' }, messages: [], report: null, finished: false })));
-      await page.reload({ waitUntil: 'load' });
-      await page.click('[data-track="ai"]');
-      ok((await page.textContent('.ai-provider.is-active .ap-name')).includes('硅基流动'), '旧智谱设置回落到新默认');
-      ok((await page.inputValue('#aiBaseUrl')).includes('siliconflow'), '旧智谱接口地址被替换');
-      await page.click('[data-pv="custom"]');
-      await page.fill('#aiBaseUrl', 'https://mock.test/v1');
-      await page.fill('#aiModel', 'mock-model');
-      await page.fill('#aiKey', 'sk-test-key-123');
-      ok((await page.textContent('#aiConsentText')).includes('自定义'), '同意书随服务商切换');
-      await page.click('#aiSetupStart');
-      ok(await page.isVisible('#screen-ai-chat'), '进入访谈屏');
-      ok((await page.textContent('#aiMsgList')).includes('欢迎开始'), '开场白本地渲染');
-      eq(calls, 0, '开场白不消耗接口调用');
+      await page.click('#heroStart');
+      await page.click('#setupStart');
+      for (let i = 0; i < 31; i++) {
+        await page.locator('#stepView .opt').first().click();
+        await page.locator('[data-nav="next"]').click();
+      }
+      await page.locator('#stepView .opt').first().click();
+      await page.locator('[data-nav="next"]').click();
 
-      await page.fill('#aiInput', '最近一次改变看法是开始跑步。');
-      await page.click('#aiSend');
-      await page.waitForFunction(() => document.querySelectorAll('.ai-row.ai').length >= 2, null, { timeout: 8000 });
-      eq(calls, 1, '发送后调用一次模型接口');
-      ok((await page.textContent('#aiMsgList')).includes('能说说最近一次'), '接口回复上屏');
+      ok(await page.isVisible('#screen-prelim'), '答完 32 题进入初步画像');
+      ok((await page.textContent('#prelimBody')).includes('元类型'), '初步画像含元类型');
+      ok((await page.textContent('#prelimBody')).includes('生活方式原型'), '初步画像含生活方式原型');
+      ok((await page.textContent('#prelimMeta')).includes('规则'), '初步画像标注规则来源');
 
-      // 刷新后能从设置屏继续上次访谈
-      await page.reload({ waitUntil: 'load' });
-      await page.click('[data-track="ai"]');
-      ok(await page.isVisible('#screen-ai-setup'), '重新进入设置屏');
-      ok((await page.textContent('#aiResume')).includes('已聊 1 轮'), '显示继续上次入口');
-      await page.click('#aiResume');
-      ok((await page.textContent('#aiMsgList')).includes('开始跑步'), '刷新后对话恢复');
-
-      // 401 错误路径
+      // 401 错误路径 + 重试 + 退回初步画像
+      await page.evaluate(() => { window.HUMAN30_CONFIG.AI_PROXY_URL = 'http://127.0.0.1:8901/mock-proxy'; });
       failMode = true;
-      await page.fill('#aiInput', '继续说。');
-      await page.click('#aiSend');
+      await page.click('#prelimDeep');
       await page.waitForSelector('#aiChatErr:not([hidden])', { timeout: 8000 });
       ok((await page.textContent('#aiChatErr')).includes('401'), 'Key 失效有友好提示');
       ok(await page.isVisible('#aiRetry'), '提供重试按钮');
+      ok(await page.isVisible('#aiBackPrelim'), '提供返回初步画像');
       failMode = false;
+      await page.click('#aiRetry');
+      await page.waitForFunction(() => document.querySelectorAll('.ai-row.ai').length >= 2, null, { timeout: 8000 });
 
-      // 生成报告
-      await page.click('#aiFinish');
+      ok(await page.isVisible('#screen-ai-chat'), '进入深聊屏');
+      ok((await page.textContent('#aiMsgList')).includes('32 道题'), '开场白本地渲染');
+      eq(calls, 2, '开场白不消耗调用，首问一次调用');
+
+      await page.fill('#aiInput', '最近一次改变看法是开始跑步。');
+      await page.click('#aiSend');
+      await page.waitForFunction(() => document.querySelectorAll('.ai-row.ai').length >= 3, null, { timeout: 8000 });
+      ok((await page.textContent('#aiMsgList')).includes('具体例子'), '接口回复上屏');
+
+      await page.fill('#aiInput', '跑步坚持了三个月。');
+      await page.click('#aiSend');
       await page.waitForSelector('#screen-ai-report:not([hidden])', { timeout: 8000 });
-      eq(await page.locator('#aiReportBody .dim-report').count(), 4, 'AI 报告含四个象限卡');
-      ok((await page.textContent('#aiReportBody')).includes('错位成长型'), 'AI 报告含元类型');
-      ok((await page.textContent('#aiReportBody')).includes('行动路线'), 'AI 报告含行动路线');
-      ok((await page.textContent('#aiReportBody')).includes('关键警告'), 'AI 报告含关键警告');
-      ok((await page.textContent('#screen-ai-report')).includes('不是心理、医疗或职业诊断'), 'AI 报告带声明');
-      ok((await page.textContent('#screen-ai-report')).includes('Dan Koe'), 'AI 报告标注理论来源');
 
-      // 本地状态与再次查看
-      const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('h30.ai.v1') || '{}'));
-      ok(stored.report && stored.messages.length > 2, '访谈状态写入 localStorage');
-      await page.click('#aiReportBack');
-      await page.click('[data-track="ai"]');
-      await page.click('#aiResumeReport');
-      ok(await page.isVisible('#screen-ai-report'), '可从设置屏查看上次报告');
+      eq(await page.locator('#aiReportBody .dim-report').count(), 4, '最终报告含四个象限卡');
+      ok((await page.textContent('#aiReportBody')).includes('错位成长型'), '最终报告含元类型');
+      ok((await page.textContent('#aiReportBody')).includes('行动路线'), '最终报告含行动路线');
+      ok((await page.textContent('#aiReportBody')).includes('关键警告'), '最终报告含关键警告');
+      ok((await page.textContent('#aiReportBody')).includes('可比的类型'), '最终报告含可比的类型');
+      ok((await page.textContent('#aiReportBody')).includes('规则基线'), '最终报告合并规则基线');
+      ok((await page.textContent('#screen-ai-report')).includes('不是心理、医疗或职业诊断'), '最终报告带声明');
+      ok((await page.textContent('#screen-ai-report')).includes('Dan Koe'), '最终报告标注理论来源');
+      ok(await page.evaluate(() => localStorage.getItem('h30.ai.v1') === null), '不再写本地存储');
       await ctx.close();
     }
 

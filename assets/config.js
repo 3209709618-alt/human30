@@ -13,9 +13,13 @@ window.HUMAN30_CONFIG = {
   // 站点名称
   SITE_NAME: 'Human3.0人生评估',
 
+  // AI 深聊代理地址（腾讯云云函数 URL）。留空则 AI 深聊不可用，只显示初步画像。
+  // Key 不存在前端：它只保存在云函数的环境变量里。
+  AI_PROXY_URL: '',
+
   // 完成率计数器（GoatCounter，无 Cookie，只记页面流转，不记回答内容）。
   // 留空则不加载任何统计脚本。用法：到 goatcounter.com 注册站点，
   // 把站点地址填在这里，例如 'https://human30.goatcounter.com'。
-  // 加载范围仅限 AI 深聊版的三个屏幕。
+  // 加载范围仅限 AI 深聊流程。
   GOATCOUNTER_URL: ''
 };

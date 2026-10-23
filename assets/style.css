@@ -1956,6 +1956,29 @@ body::after {
     radial-gradient(36vmax 36vmax at 10% 78%, rgba(95, 143, 132, 0.1), transparent 62%);
 }
 
+/* ------------------------------------------------------------- 初步画像 */
+.prelim-dims {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 4px;
+}
+.prelim-dim {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.prelim-dim .pd-name { font-size: 14px; font-weight: 600; color: var(--ink); min-width: 84px; }
+.prelim-dim .pd-stage { font-size: 12.5px; color: var(--ink-2); }
+.prelim-dim .pd-phase { font-size: 12.5px; color: var(--accent-ink); }
+.prelim-cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 10px; }
+.prelim-cta .btn { flex: 1 1 200px; }
+.ai-thinking { opacity: 0.6; font-style: italic; }
+
 /* Hero 象限索引：玻璃面板 */
 .hero-index {
   background: var(--glass);

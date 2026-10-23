@@ -81,7 +81,7 @@
 
   /* ------------------------------------------------------------- 路由 */
 
-  var SCREENS = ['landing', 'setup', 'quiz', 'report', 'ai-setup', 'ai-chat', 'ai-report'];
+  var SCREENS = ['landing', 'setup', 'quiz', 'prelim', 'report', 'ai-chat', 'ai-report'];
 
   function go(name) {
     state.screen = name;
@@ -100,7 +100,7 @@
     var pill = $('planPill');
     pill.hidden = (state.screen === 'landing');
     pill.textContent = p.name + ' · ' + p.minutes;
-    $('btnRestartTop').hidden = !(state.screen === 'setup' || state.screen === 'quiz' || state.screen === 'report');
+    $('btnRestartTop').hidden = !(state.screen === 'setup' || state.screen === 'quiz' || state.screen === 'prelim' || state.screen === 'report');
   }
 
   /* ------------------------------------------------------- 入口与版本 */
@@ -119,7 +119,7 @@
   function updateLanding() {
     var p = D.PLANS.complete;
     $('heroStart').textContent = '开始评估';
-    $('heroPlanHint').textContent = '32 道题 · 四个维度 · ' + p.minutes + ' · 不上传、不保存';
+    $('heroPlanHint').textContent = '32 道题 · 四个维度 · ' + p.minutes + ' + 深聊 10–15 分钟';
   }
 
   /* ------------------------------------------------------------- 设置 */
@@ -349,13 +349,13 @@
       showMissing(missing);
       return;
     }
-    generateReport();
+    showPrelim();
   }
 
   /* ------------------------------------------------------------- 报告 */
 
-  function generateReport() {
-    if (!state.questions.length) return;
+  function buildReportData() {
+    if (!state.questions.length) return null;
     clearAdvance();
     state.report = L.buildReport({
       answers: state.answers,
@@ -363,8 +363,53 @@
       note: state.note,
       now: new Date()
     });
+    return state.report;
+  }
+
+  /* 32 题之后：先给一份精简的初步画像，再引导进入 AI 深聊 */
+  function showPrelim() {
+    var r = buildReportData();
+    if (!r) return;
+    renderPrelim();
+    go('prelim');
+  }
+
+  function renderPrelim() {
+    var r = state.report;
+    if (!r) return;
+    var html = '<p class="report-overview">' + esc(r.overview) + '</p>';
+    html += '<div class="type-grid">' +
+      typeCard('元类型', r.metatype.name, r.metatype.desc, '由四个维度的发展阶段组合得到，不涉及分数') +
+      typeCard('生活方式原型', r.archetype.name, r.archetype.desc, r.archetype.basis) +
+      '</div>';
+    html += linkageCard(r.linkage);
+    html += '<div class="prelim-dims">' + r.rows.map(function (row) {
+      return '<div class="prelim-dim">' +
+        '<span class="pd-name">' + esc(row.name) + '</span>' +
+        '<span class="pd-stage">' + esc(row.levelLabel) + '</span>' +
+        '<span class="pd-phase">' + esc(row.phaseLabel) + '</span>' +
+        '</div>';
+    }).join('') + '</div>';
+    $('prelimBody').innerHTML = html;
+    $('prelimMeta').innerHTML = '<span>32 题 · 规则初步判断</span><span>' + esc(L.formatTime(r.generatedAt)) + '</span>';
+  }
+
+  function showFullReport() {
+    if (!state.report && !buildReportData()) return;
     renderReport();
     go('report');
+  }
+
+  function startDeepChat() {
+    if (!state.report && !buildReportData()) return;
+    if (window.H30Chat) {
+      window.H30Chat.startInterview({
+        answers: state.answers,
+        questions: state.questions,
+        note: state.note,
+        report: state.report
+      });
+    }
   }
 
   function typeCard(label, name, desc, basis) {
@@ -523,12 +568,9 @@
       go('setup');
     });
 
-    document.querySelectorAll('[data-track]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        if (btn.getAttribute('data-track') === 'ai') go('ai-setup');
-        else { renderSetup(); go('setup'); }
-      });
-    });
+    $('prelimDeep').addEventListener('click', startDeepChat);
+    $('prelimFull').addEventListener('click', showFullReport);
+    $('prelimBack').addEventListener('click', function () { go('landing'); });
 
     $('setupBack').addEventListener('click', function () { go('landing'); });
     $('setupStart').addEventListener('click', startQuiz);

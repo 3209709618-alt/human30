@@ -204,7 +204,7 @@ console.log('\n[8] 文本工具');
 (function aiPromptTests() {
   const p = AI.buildSystemPrompt();
 
-  ok(p.includes('不超过 16 个问题'), '提示词含时间盒（≤16 问）');
+  ok(p.includes('4–8'), '提示词含时间盒（4–8 问）');
   ok(p.includes('角色锁定'), '提示词含角色锁定（防注入）');
   ok(p.includes('无证据'), '提示词含「未知=无证据」汇总规则');
   ok(p.includes('\`\`\`json'), '提示词含结构化契约标记');
@@ -212,7 +212,7 @@ console.log('\n[8] 文本工具');
   ok(p.includes('错位成长型'), '提示词注入 canonical 元类型词表');
   ok(p.includes('反复回放的观察者'), '提示词注入 canonical 原型词表');
   ok(p.length > 3000 && p.length < 8000, '提示词长度受控（' + p.length + ' 字）');
-  ok(AI.OPENING.indexOf('我们先从心智象限开始') > 0, '开场白固定且完整');
+  ok(AI.OPENING.indexOf('32 道题') > 0, '开场白固定且完整');
 
   // 解析：拒收坏输入
   ok(!AI.parseReport('这是一段普通回复').ok, '无 json 的回复被拒绝');

@@ -1,0 +1,10 @@
+{
+  "name": "human30-ai-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Human3.0 人生评估的 AI 深聊代理（腾讯云云函数 SCF）",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  }
+}

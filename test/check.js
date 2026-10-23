@@ -17,7 +17,7 @@ const RULES = [
   { name: '疑似 API Key', re: /\b(sk-[A-Za-z0-9_-]{10,}|api[_-]?key\s*[:=]\s*['"][^'"]{6,})/i },
   { name: '密钥字段', re: /\b(client[_-]?secret|access[_-]?token|private[_-]?key|bearer\s+[A-Za-z0-9._-]{10,})\b/i },
   { name: '网络请求', re: /\b(fetch\s*\(|XMLHttpRequest|sendBeacon|new\s+WebSocket|axios|\.ajax\s*\()/, allow: ['assets/ai-chat.js'] },
-  { name: '本地存储', re: /\b(localStorage|sessionStorage|indexedDB|document\.cookie)\b/, allow: ['assets/ai-chat.js'] },
+  { name: '本地存储', re: /\b(localStorage|sessionStorage|indexedDB|document\.cookie)\b/ },
   { name: '支付相关', re: /\b(stripe|alipay|paypal|checkout|wechatpay|wxpay|payment)[A-Za-z_]*\b/i },
   { name: '外链脚本/样式', re: /<(script|link)[^>]+(src|href)\s*=\s*["']https?:\/\//i },
   { name: '内联事件处理器', re: /\son(click|load|error|submit)\s*=/i }
@@ -69,10 +69,9 @@ const must = [
   ['四维：身体', '身体'],
   ['四维：关系与意义', '关系与意义'],
   ['四维：职业与贡献', '职业与贡献'],
-  ['双轨入口', 'data-track'],
-  ['AI 同意书', 'aiConsentText'],
-  ['AI 报告声明', '本报告由 AI 根据你的访谈回答生成'],
-  ['Key 本地保存说明', '不写进网页代码']
+  ['初步画像入口', 'prelimDeep'],
+  ['AI 报告声明', '本报告由 AI 根据你的 32 题答案与深聊生成'],
+  ['深聊数据说明', '本站不额外留存']
 ];
 must.forEach(([label, needle]) => {
   checks++;
@@ -116,7 +115,7 @@ mustInApp.forEach(([label, needle]) => {
 // AI 访谈官提示词的六处加固（v4）
 const prompt = fs.readFileSync(path.join(ROOT, 'assets/ai-prompt.js'), 'utf8');
 const mustInPrompt = [
-  ['时间盒', '不超过 16 个问题'],
+  ['时间盒', '4–8'],
   ['角色锁定（防注入）', '角色锁定'],
   ['未知汇总规则', '无证据'],
   ['结构化契约', 'json 代码块'],
@@ -135,9 +134,7 @@ mustInPrompt.forEach(([label, needle]) => {
 // AI 深聊版控制器
 const chat = fs.readFileSync(path.join(ROOT, 'assets/ai-chat.js'), 'utf8');
 const mustInChat = [
-  ['服务商预设', 'PROVIDERS'],
-  ['本地状态', 'localStorage'],
-  ['直连服务商', 'chat/completions'],
+  ['代理调用', 'AI_PROXY_URL'],
   ['限流提示', '429'],
   ['Key 失效提示', '401'],
   ['报告解析', 'parseReport'],

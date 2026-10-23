@@ -73,9 +73,9 @@ const server = http.createServer((req, res) => {
   await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(OUT, '11-map-jump.png') });
 
-  // 报告
+  // 初步画像
   for (let i = 0; i < 40; i++) {
-    if (await page.isVisible('#screen-report')) break;
+    if (await page.isVisible('#screen-prelim')) break;
     const before = (await page.textContent('#quizCount')).trim();
     await page.locator('#stepView .opt').nth(i % 3).click();
     await page.waitForTimeout(380);
@@ -84,10 +84,13 @@ const server = http.createServer((req, res) => {
     }
   }
   await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(OUT, '12-report-top.png') });
+  await page.screenshot({ path: path.join(OUT, '12-prelim.png') });
+  await page.click('#prelimFull');
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, '13-report-top.png') });
   await page.evaluate(() => window.scrollBy(0, 780));
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(OUT, '13-report-dim.png') });
+  await page.screenshot({ path: path.join(OUT, '14-report-dim.png') });
 
   // 手机端
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
@@ -115,9 +118,9 @@ const server = http.createServer((req, res) => {
   await m.waitForTimeout(500);
   await m.screenshot({ path: path.join(OUT, '25-m-next.png') });
 
-  // 手机端报告
+  // 手机端初步画像
   for (let i = 0; i < 40; i++) {
-    if (await m.isVisible('#screen-report')) break;
+    if (await m.isVisible('#screen-prelim')) break;
     const before = (await m.textContent('#quizCount')).trim();
     await m.locator('#stepView .opt').nth(i % 3).click();
     await m.waitForTimeout(380);
@@ -126,7 +129,10 @@ const server = http.createServer((req, res) => {
     }
   }
   await m.waitForTimeout(500);
-  await m.screenshot({ path: path.join(OUT, '26-m-report.png') });
+  await m.screenshot({ path: path.join(OUT, '26-m-prelim.png') });
+  await m.click('#prelimFull');
+  await m.waitForTimeout(400);
+  await m.screenshot({ path: path.join(OUT, '27-m-report.png') });
 
   await browser.close();
   server.close();
