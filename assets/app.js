@@ -15,16 +15,12 @@
   var L = window.H30Logic;
 
   var CFG = Object.assign({
-    ACCESS_CODE: 'han0220',
-    SITE_NAME: 'Human3.0人生评估',
-    SHOW_CODE_HINT: false
+    SITE_NAME: 'Human3.0人生评估'
   }, window.HUMAN30_CONFIG || {});
 
   /* ------------------------------------------------------------- 状态 */
 
   var state = {
-    unlocked: false,
-    afterGate: 'setup',
     dims: D.DIM_ORDER.slice(),
     answers: {},
     note: '',
@@ -85,7 +81,7 @@
 
   /* ------------------------------------------------------------- 路由 */
 
-  var SCREENS = ['landing', 'gate', 'setup', 'quiz', 'report', 'ai-setup', 'ai-chat', 'ai-report'];
+  var SCREENS = ['landing', 'setup', 'quiz', 'report', 'ai-setup', 'ai-chat', 'ai-report'];
 
   function go(name) {
     state.screen = name;
@@ -124,51 +120,6 @@
     var p = D.PLANS.complete;
     $('heroStart').textContent = '开始评估';
     $('heroPlanHint').textContent = '32 道题 · 四个维度 · ' + p.minutes + ' · 不上传、不保存';
-  }
-
-  /* ------------------------------------------------------------- 访问码 */
-
-  function renderGate() {
-    var p = D.PLANS.complete;
-    $('gatePlanLabel').textContent = state.afterGate === 'ai-setup'
-      ? 'AI 深聊版 · 约 40 分钟，最多 16 个问题。'
-      : '免费体验版 · ' + p.minutes + '，共 32 道题。';
-    $('gateHint').textContent = CFG.SHOW_CODE_HINT
-      ? '演示用访问码：' + CFG.ACCESS_CODE + '。这是纯前端演示，只能用于流程测试，不构成真实的付费权限或安全保护。'
-      : '这是纯前端演示，访问码写在前端配置里，只能用于流程演示，不构成真实的付费权限或安全保护。';
-    $('gateInput').value = '';
-    $('gateError').hidden = true;
-    $('gateField').classList.remove('has-error');
-  }
-
-  function submitGate(e) {
-    e.preventDefault();
-    var val = $('gateInput').value.trim();
-    if (!val) {
-      showGateError('请输入访问码。');
-      return;
-    }
-    if (val.toLowerCase() === String(CFG.ACCESS_CODE).trim().toLowerCase()) {
-      state.unlocked = true;
-      $('gateError').hidden = true;
-      $('gateField').classList.remove('has-error');
-      if (state.afterGate === 'ai-setup') {
-        go('ai-setup');
-      } else {
-        renderSetup();
-        go('setup');
-      }
-    } else {
-      showGateError('访问码不正确，请向站点维护者确认。');
-      $('gateInput').select();
-    }
-  }
-
-  function showGateError(msg) {
-    var err = $('gateError');
-    err.textContent = msg;
-    err.hidden = false;
-    $('gateField').classList.add('has-error');
   }
 
   /* ------------------------------------------------------------- 设置 */
@@ -568,31 +519,16 @@
     });
 
     $('heroStart').addEventListener('click', function () {
-      state.afterGate = 'setup';
-      if (state.unlocked) {
-        renderSetup();
-        go('setup');
-      } else {
-        renderGate();
-        go('gate');
-      }
+      renderSetup();
+      go('setup');
     });
 
     document.querySelectorAll('[data-track]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        state.afterGate = btn.getAttribute('data-track') === 'ai' ? 'ai-setup' : 'setup';
-        if (state.unlocked) {
-          if (state.afterGate === 'ai-setup') go('ai-setup');
-          else { renderSetup(); go('setup'); }
-        } else {
-          renderGate();
-          go('gate');
-        }
+        if (btn.getAttribute('data-track') === 'ai') go('ai-setup');
+        else { renderSetup(); go('setup'); }
       });
     });
-
-    $('gateForm').addEventListener('submit', submitGate);
-    $('gateBack').addEventListener('click', function () { go('landing'); });
 
     $('setupBack').addEventListener('click', function () { go('landing'); });
     $('setupStart').addEventListener('click', startQuiz);

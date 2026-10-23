@@ -24,15 +24,14 @@ Human3.0人生评估基于 Dan Koe 的 HUMAN 3.0 框架，把模糊的卡住感�
 
 ## Operating Context
 
-移动优先，基准视口 390×844，桌面兼容。访问码进入（纯前端演示，写在公开配置里）。报告可一键复制为纯文本。AI 版对话存于本人浏览器 localStorage，可刷新续聊。
+移动优先，基准视口 390×844，桌面兼容。打开即用，无需访问码或登录。报告可一键复制为纯文本。AI 版对话存于本人浏览器 localStorage，可刷新续聊。
 
 ## Capabilities and Constraints
 
 - 纯静态：无后端、无数据库、无构建；`index.html` 在仓库根目录，附 `.nojekyll`。
 - 免费版红线：不调 AI、不发任何网络请求、不保存答题数据；合规扫描对 `assets/ai-chat.js` 以外的文件强制执行。
 - AI 版：localStorage（键 `h30.ai.v1`）存对话；用户自带 API Key，请求从浏览器直连模型服务商；预设只收 CORS 预检通过的服务商（硅基流动 / DeepSeek / 通义千问），智谱因预检不放行 Authorization 不入预设。
-- 测试基线：规则 686、端到端 100、合规 96，全过才可发布。
-- 访问码 `han0220`，改 `assets/config.js`。
+- 测试基线：规则 686、端到端 96、合规 96，全过才可发布。
 
 ## Brand Commitments
 
@@ -43,7 +42,7 @@ Human3.0人生评估基于 Dan Koe 的 HUMAN 3.0 框架，把模糊的卡住感�
 
 ## Evidence on Hand
 
-真实产品已上线：https://3209709618-alt.github.io/human30/?plan=complete（访问码 han0220）。首页报告样例区为真实报告结构的示意。无用户评价、案例、转化数据或第三方背书——未来工作不得编造。
+真实产品已上线：https://3209709618-alt.github.io/human30/?plan=complete。首页报告样例区为真实报告结构的示意。无用户评价、案例、转化数据或第三方背书——未来工作不得编造。
 
 ## Product Principles
 

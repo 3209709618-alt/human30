@@ -10,8 +10,6 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT = path.resolve(ROOT, '..', '.preview');
 const PORT = 8902;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
-const CFG_SRC = fs.readFileSync(path.join(ROOT, 'assets/config.js'), 'utf8');
-const CODE = (CFG_SRC.match(/ACCESS_CODE:\s*'([^']+)'/) || [])[1] || 'han0220';
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'application/javascript' };
 
 fs.mkdirSync(OUT, { recursive: true });
@@ -58,12 +56,7 @@ const server = http.createServer((req, res) => {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.click('#heroStart');
   await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, '06-gate.png') });
-
-  await page.fill('#gateInput', CODE);
-  await page.click('#gateForm button[type="submit"]');
-  await page.waitForTimeout(300);
-  await page.screenshot({ path: path.join(OUT, '07-setup.png') });
+  await page.screenshot({ path: path.join(OUT, '06-setup.png') });
 
   await page.click('#setupStart');
   await page.waitForTimeout(300);
@@ -108,8 +101,6 @@ const server = http.createServer((req, res) => {
 
   await m.evaluate(() => window.scrollTo(0, 0));
   await m.click('#heroStart');
-  await m.fill('#gateInput', CODE);
-  await m.click('#gateForm button[type="submit"]');
   await m.waitForTimeout(300);
   await m.screenshot({ path: path.join(OUT, '22-m-setup.png') });
   await m.click('#setupStart');

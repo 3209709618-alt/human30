@@ -1,6 +1,6 @@
 /* 端到端流程自测：node test/e2e.js
  * 使用本机 Chrome + playwright-core 驱动真实浏览器。
- * 覆盖：单一入口、访问码、自动跳题、改答案不跳、答题卡、必答校验、
+ * 覆盖：单一入口、自动跳题、改答案不跳、答题卡、必答校验、
  *      报告结构、复制、重置、手机端布局、可选笔记。
  */
 'use strict';
@@ -13,8 +13,6 @@ const { chromium } = require('C:/Users/32097/AppData/Roaming/npm/node_modules/@p
 const ROOT = path.resolve(__dirname, '..');
 const PORT = 8901;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
-const CFG_SRC = fs.readFileSync(path.join(ROOT, 'assets/config.js'), 'utf8');
-const CODE = (CFG_SRC.match(/ACCESS_CODE:\s*'([^']+)'/) || [])[1] || 'han0220';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -63,11 +61,6 @@ async function newPage(browser, query) {
   return { ctx, page, external };
 }
 
-async function enterCode(page, code) {
-  await page.fill('#gateInput', code);
-  await page.click('#gateForm button[type="submit"]');
-}
-
 (async () => {
   await new Promise(resolve => server.listen(PORT, '127.0.0.1', resolve));
   const browser = await chromium.launch({
@@ -76,7 +69,7 @@ async function enterCode(page, code) {
   });
 
   try {
-    /* ------------------------------------------------ 单一入口与访问码 */
+    /* ------------------------------------------------ 单一入口 */
     console.log('\n[入口] ?plan=complete');
     {
       const { ctx, page, external } = await newPage(browser, '?plan=complete');
@@ -90,15 +83,7 @@ async function enterCode(page, code) {
       ok((await page.textContent('#screen-landing')).includes('报告片段 · 示例'), '首页展示报告样例');
 
       await page.click('#heroStart');
-      ok(await page.isVisible('#screen-gate'), '进入访问码页');
-      ok((await page.textContent('#gatePlanLabel')).includes('32 道题'), '访问码页标明题量');
-
-      await enterCode(page, 'wrong-code');
-      ok(await page.isVisible('#gateError'), '错误访问码显示提示');
-      ok(await page.isVisible('#screen-gate'), '错误访问码停留在验证页');
-
-      await enterCode(page, CODE);
-      ok(await page.isVisible('#screen-setup'), '正确访问码进入设置页');
+      ok(await page.isVisible('#screen-setup'), '开始评估直接进入设置页');
       ok(await page.locator('#dimBlock').count() === 0, '设置页不再有维度选择');
       ok((await page.textContent('#setupSummary')).includes('32 题'), '摘要显示 32 题');
       ok((await page.textContent('#setupSummary')).includes('4 个'), '摘要显示四个维度');
@@ -209,7 +194,6 @@ async function enterCode(page, code) {
       ok(await page.isVisible('#heroStart'), '首页主按钮可见');
 
       await page.click('#heroStart');
-      await enterCode(page, CODE);
       await page.click('#setupStart');
 
       ok(await page.isVisible('#mapToggle'), '手机端显示答题卡折叠按钮');
@@ -240,7 +224,6 @@ async function enterCode(page, code) {
       const page = await ctx.newPage();
       await page.goto(BASE + '?plan=complete', { waitUntil: 'load' });
       await page.click('#heroStart');
-      await enterCode(page, CODE);
       await page.click('#setupStart');
 
       for (let i = 0; i < 31; i++) {
@@ -315,8 +298,7 @@ async function enterCode(page, code) {
       });
 
       await page.click('[data-track="ai"]');
-      await enterCode(page, CODE);
-      ok(await page.isVisible('#screen-ai-setup'), 'AI 轨过访问码后进入设置屏');
+      ok(await page.isVisible('#screen-ai-setup'), 'AI 轨进入设置屏');
       eq(await page.locator('.ai-provider.is-active').count(), 1, '默认有一个服务商被选中');
       ok((await page.textContent('.ai-provider.is-active .ap-name')).includes('硅基流动'), '默认服务商是硅基流动');
       ok((await page.inputValue('#aiModel')).includes('GLM-5.3-Flash'), '默认模型是 GLM-5.3-Flash');
@@ -324,7 +306,6 @@ async function enterCode(page, code) {
       await page.evaluate(() => localStorage.setItem('h30.ai.v1', JSON.stringify({ settings: { provider: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', key: 'sk-old' }, messages: [], report: null, finished: false })));
       await page.reload({ waitUntil: 'load' });
       await page.click('[data-track="ai"]');
-      await enterCode(page, CODE);
       ok((await page.textContent('.ai-provider.is-active .ap-name')).includes('硅基流动'), '旧智谱设置回落到新默认');
       ok((await page.inputValue('#aiBaseUrl')).includes('siliconflow'), '旧智谱接口地址被替换');
       await page.click('[data-pv="custom"]');
@@ -346,7 +327,6 @@ async function enterCode(page, code) {
       // 刷新后能从设置屏继续上次访谈
       await page.reload({ waitUntil: 'load' });
       await page.click('[data-track="ai"]');
-      await enterCode(page, CODE);
       ok(await page.isVisible('#screen-ai-setup'), '重新进入设置屏');
       ok((await page.textContent('#aiResume')).includes('已聊 1 轮'), '显示继续上次入口');
       await page.click('#aiResume');

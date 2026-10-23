@@ -538,25 +538,6 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   color: var(--muted);
 }
 
-/* ------------------------------------------------------------- 访问码 */
-.gate-wrap {
-  min-height: 62vh;
-  display: grid;
-  place-items: center;
-  padding: 48px 0;
-}
-.card {
-  width: 100%;
-  max-width: 460px;
-  padding: clamp(24px, 5vw, 36px);
-  border: 1px solid var(--line);
-  border-radius: 26px;
-  background: linear-gradient(175deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015));
-  box-shadow: 0 30px 80px -50px rgba(0, 0, 0, 0.9);
-}
-.card h2 { font-size: clamp(22px, 4.6vw, 27px); margin-bottom: 8px; }
-.card .muted { font-size: 13.5px; margin: 0 0 22px; }
-
 .field { margin-bottom: 14px; }
 .field input {
   width: 100%;
@@ -583,9 +564,6 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   color: var(--danger);
 }
 .field-error[hidden] { display: none; }
-
-.gate-actions { display: flex; gap: 10px; margin-top: 18px; }
-.gate-actions .btn { flex: 1; }
 
 /* ------------------------------------------------------------- 设置 */
 .setup { max-width: var(--readw); margin: 0 auto; padding: clamp(28px, 6vw, 52px) 0 40px; }
@@ -1769,8 +1747,7 @@ input, textarea { caret-color: var(--accent-ink); }
 /* 输入框：玻璃槽 */
 .field input,
 .ai-inputbar textarea,
-#noteInput,
-.gate-wrap .field input {
+#noteInput {
   background: rgba(255, 255, 255, 0.66);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
@@ -1924,7 +1901,6 @@ input, textarea { caret-color: var(--accent-ink); }
 .muted { color: var(--muted); }
 .dim-qcount { color: var(--dim); }
 .setup-summary { color: var(--muted); }
-.gate-hint, #gateHint { color: var(--muted); }
 
 /* 动效偏好 */
 @media (prefers-reduced-motion: reduce) {
