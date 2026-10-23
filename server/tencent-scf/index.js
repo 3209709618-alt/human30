@@ -40,7 +40,7 @@ function corsHeaders(origin) {
 function reply(status, body, origin) {
   var headers = corsHeaders(origin);
   headers['Content-Type'] = 'application/json; charset=utf-8';
-  return { statusCode: status, headers: headers, body: JSON.stringify(body) };
+  return { statusCode: status, headers: headers, body: JSON.stringify(body), isBase64Encoded: false };
 }
 
 function header(event, name) {
@@ -82,7 +82,7 @@ exports.main_handler = async function (event) {
   var method = String(event.httpMethod || (event.requestContext && event.requestContext.httpMethod) || 'POST').toUpperCase();
 
   if (method === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders(origin), body: '' };
+    return { statusCode: 204, headers: corsHeaders(origin), body: '', isBase64Encoded: false };
   }
   if (method === 'GET') {
     return reply(200, { ok: true, configured: !!API_KEY, model: MODEL }, origin);
