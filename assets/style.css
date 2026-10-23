@@ -1986,6 +1986,9 @@ body::after {
 .prelim-cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 24px 0 10px; }
 .prelim-cta .btn { flex: 1 1 200px; }
 .ai-thinking { opacity: 0.6; font-style: italic; }
+/* 深聊达到轮次上限：输入框与发送按钮进入禁用态 */
+.ai-inputbar textarea:disabled { opacity: 0.55; cursor: not-allowed; }
+.ai-inputbar .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Hero 象限索引：玻璃面板 */
 .hero-index {

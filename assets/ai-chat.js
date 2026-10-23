@@ -107,20 +107,30 @@
   }
 
   function updateChatMeta() {
+    var t = turnCount();
+    var maxed = t >= MAX_TURNS;
     var info = $('aiChatMeta');
     if (info) {
-      var t = turnCount();
       info.innerHTML = '已追问 <b>' + t + '</b> / ' + MAX_TURNS + ' 轮' +
-        (state.finished ? ' · <span class="ai-done">可以生成报告了</span>' : '');
+        (maxed ? ' · <span class="ai-done">已达上限，请生成报告</span>' :
+          (state.finished ? ' · <span class="ai-done">可以生成报告了</span>' : ''));
     }
     var send = $('aiSend');
-    if (send) send.disabled = state.busy;
+    if (send) send.disabled = state.busy || maxed;
     var input = $('aiInput');
-    if (input) input.disabled = state.busy;
+    if (input) {
+      input.disabled = state.busy || maxed;
+      input.placeholder = maxed
+        ? '已达 ' + MAX_TURNS + ' 轮上限，请点击下方「生成最终报告」'
+        : '用真实经历回答，不用理想中的自己回答……';
+    }
     var fin = $('aiFinish');
     if (fin) {
+      var done = state.finished || maxed;
       fin.disabled = state.busy || !state.messages.length;
-      fin.textContent = state.finished ? '生成最终报告' : '结束深聊并生成报告';
+      fin.classList.toggle('btn-primary', done);
+      fin.classList.toggle('btn-ghost', !done);
+      fin.textContent = done ? '生成最终报告' : '结束深聊并生成报告';
     }
   }
 
@@ -165,7 +175,7 @@
 
   function sendUser(text) {
     text = String(text || '').trim();
-    if (!text || state.busy) return;
+    if (!text || state.busy || turnCount() >= MAX_TURNS) return;
     state.messages.push({ role: 'user', content: text });
     state.busy = true;
     updateChatMeta();
