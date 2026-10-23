@@ -15,15 +15,15 @@
    * 因此不列入预设；用户在自定义里填了智谱地址时会收到明确提示。 */
   var PROVIDERS = [
     { id: 'siliconflow', name: '硅基流动', tag: '注册送 ¥14 额度 · 推荐',
-      desc: '一个 Key 调用多家模型，国内直连。默认 GLM-5.3-Flash，额度用完可换平台上的免费小模型。',
+      desc: '一个 Key 调用多家模型，国内直连。默认 GLM-5.3-Flash，额度用完可换平台上的小模型。',
       baseUrl: 'https://api.siliconflow.cn/v1', model: 'zai-org/GLM-5.3-Flash',
       signup: 'https://siliconflow.cn/' },
     { id: 'deepseek', name: 'DeepSeek', tag: '更强 · 需小额充值',
-      desc: '官方接口，模型质量高。适合对免费档不满意之后切换。',
+      desc: '官方接口，模型质量高。适合对基础档不满意之后切换。',
       baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat',
       signup: 'https://platform.deepseek.com/' },
-    { id: 'tongyi', name: '通义千问', tag: '新用户有免费额度',
-      desc: '阿里云百炼的 OpenAI 兼容接口，新用户可领免费额度。',
+    { id: 'tongyi', name: '通义千问', tag: '新用户有赠送额度',
+      desc: '阿里云百炼的 OpenAI 兼容接口，新用户可领赠送额度。',
       baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus',
       signup: 'https://bailian.console.aliyun.com/' },
     { id: 'custom', name: '自定义', tag: '任意 OpenAI 兼容接口',
@@ -230,8 +230,8 @@
 
   function friendlyError(status, msg) {
     if (status === 401) return 'Key 无效或已过期（401）。请确认复制完整、没有多余空格。';
-    if (status === 402) return '账户余额不足（402）。免费档通常不会出现这个，检查是否选错了服务商。';
-    if (status === 429) return '触发限流（429）。免费额度有频率限制，等一两分钟再试。';
+    if (status === 402) return '账户余额不足（402）。基础档通常不会出现这个，检查是否选错了服务商。';
+    if (status === 429) return '触发限流（429）。基础额度有频率限制，等一两分钟再试。';
     if (status >= 500) return '服务商暂时不可用（' + status + '）。稍后再试，或换一家服务商。';
     return msg || ('请求失败（' + status + '）');
   }

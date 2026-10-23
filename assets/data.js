@@ -15,7 +15,7 @@
   var PLANS = {
     complete: {
       id: 'complete',
-      name: '免费体验版',
+      name: '体验版',
       minutes: '约 30 分钟',
       tagline: '四个维度、32 道题，一份完整的报告',
       desc: '四个维度各 8 题，覆盖判断、作息、关系与职业方向。',

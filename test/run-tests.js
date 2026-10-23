@@ -150,7 +150,7 @@ console.log('\n[5] 复制报告文本');
   const r = buildFull([2, 3, 2, 3], ['u', 'f', 'u', 'f']);
   const text = L.toText(r);
 
-  ok(text.includes('Human3.0人生评估 · 免费体验版'), '包含标题与版本');
+  ok(text.includes('Human3.0人生评估 · 体验版'), '包含标题与版本');
   ok(text.includes('【说明】'), '包含报告说明');
   ok(text.includes('不是心理、医疗或职业诊断'), '说明覆盖三类诊断');
   ok(text.includes('不是经过验证的客观测评'), '说明声明非验证测评');
