@@ -2,7 +2,7 @@
 
 基于 HUMAN 3.0 框架的中文互动自我探索网站。前端是纯静态页面，可直接部署到 GitHub Pages；AI 深聊通过一个腾讯云云函数代理调用模型，Key 只在代理的环境变量里。
 
-> 单流程产品：**回答 32 题 → 初步画像 → AI 深聊（4–8 个追问）→ 深度报告**。报告把规则判断和深聊洞察合并，不显示数字分数。当前为原型：不收款、不开通会员，访客无需自备 API Key。
+> 单流程产品：**回答 32 题 → 初步画像 → AI 深聊（4–8 个追问）→ 深度报告**。报告把规则判断和深聊洞察合并，不显示数字分数。访客无需自备 API Key。
 
 ## 在线地址
 
@@ -68,7 +68,7 @@ npx serve .
    ```bash
    git init
    git add .
-   git commit -m "Human3.0人生评估 静态原型"
+   git commit -m "Human3.0人生评估"
    git branch -M main
    git remote add origin https://github.com/<你的用户名>/<仓库名>.git
    git push -u origin main
@@ -167,7 +167,7 @@ node test/e2e.js
 
 - 答题过程只保存在页面内存里，刷新或关闭页面即清空；不使用浏览器存储。
 - 除了加载自身的 HTML / CSS / JS，答题阶段不发送任何网络请求。
-- 不包含任何 API Key、支付或会员逻辑。
+- 前端不包含任何 API Key。
 
 **AI 深聊**（结构决策见 `docs/adr/0006`）：
 
@@ -177,7 +177,7 @@ node test/e2e.js
 - 计数器（GoatCounter）只记页面流转、不记回答内容，仅深聊流程加载；`config.js` 的 `GOATCOUNTER_URL` 留空即完全关闭。
 - 合规扫描（`test/check.js`）要求：除 `assets/ai-chat.js` 外，任何文件不得出现网络请求或浏览器存储。
 
-全站不包含任何支付、下单、会员开通逻辑。
+支付与会员能力可按商业需要另行接入。
 
 ---
 

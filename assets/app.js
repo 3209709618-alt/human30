@@ -96,10 +96,6 @@
   }
 
   function updateChrome() {
-    var p = D.PLANS.complete;
-    var pill = $('planPill');
-    pill.hidden = (state.screen === 'landing');
-    pill.textContent = p.name + ' · ' + p.minutes;
     $('btnRestartTop').hidden = !(state.screen === 'setup' || state.screen === 'quiz' || state.screen === 'prelim' || state.screen === 'report');
   }
 
