@@ -29,6 +29,7 @@
 │   ├── app.js          单流程路由：答题 / 初步画像 / 完整规则报告
 │   └── style.css       液态玻璃主题样式（移动端优先）
 ├── server/tencent-scf/ 腾讯云云函数代理（持有 Key，见该目录 README）
+├── server/aliyun-fc/   阿里云函数计算代理（长期免费额度，见该目录 README）
 ├── GLOSSARY.md         领域语言（术语以此为准）
 ├── DESIGN.md           视觉世界规则（v5 液态玻璃）
 ├── docs/adr/           结构决策记录（单流程 / 代理持 Key / 不存对话等）
