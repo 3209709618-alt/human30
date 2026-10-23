@@ -1917,17 +1917,19 @@ input, textarea { caret-color: var(--accent-ink); }
 }
 
 /* 深色残留清理 + 光斑加强 */
-/* 答题底栏：悬浮圆角玻璃框，而不是整条白栏 */
+/* 答题底栏：独立悬浮圆角玻璃框，而不是整条横栏 */
 .quiz-foot {
   bottom: calc(12px + env(safe-area-inset-bottom));
+  width: min(100%, 520px);
+  justify-self: start;
   margin: 18px 0 0;
   padding: 12px 16px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.45);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: var(--specular), var(--shadow-sm);
+  box-shadow: var(--specular), var(--shadow-md);
 }
 .site-footer { background: rgba(255, 255, 255, 0.42); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
 body::before {
