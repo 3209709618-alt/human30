@@ -235,6 +235,11 @@
       updateChatMeta();
       renderMessages();
       if (e && e.needCode) { showCodeBox(askFirst, e.message); return; }
+      // 已经填过码却发不出请求（网络中断 / 预检失败），退回兑换码框，避免用户卡死
+      if (e && e.name === 'TypeError' && state.code) {
+        showCodeBox(askFirst, '请求没能发出：网络可能中断了。可以重试，或重新输入兑换码。');
+        return;
+      }
       showChatErr(netErr(e), askFirst);
     });
   }
@@ -272,6 +277,11 @@
       if (e && e.needCode) {
         state.messages.pop(); // 移除未成功发送的用户消息，避免重复
         showCodeBox(function () { sendUser(text); }, e.message);
+        return;
+      }
+      if (e && e.name === 'TypeError' && state.code) {
+        state.messages.pop();
+        showCodeBox(function () { sendUser(text); }, '请求没能发出：网络可能中断了。可以重试，或重新输入兑换码。');
         return;
       }
       showChatErr(netErr(e), function () {
@@ -317,6 +327,10 @@
       updateChatMeta();
       renderMessages();
       if (e && e.needCode) { showCodeBox(finishInterview, e.message); return; }
+      if (e && e.name === 'TypeError' && state.code) {
+        showCodeBox(finishInterview, '请求没能发出：网络可能中断了。可以重试，或重新输入兑换码。');
+        return;
+      }
       showChatErr(netErr(e), finishInterview);
     });
   }

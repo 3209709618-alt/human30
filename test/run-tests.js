@@ -434,6 +434,16 @@ async function proxyTests() {
     eq(r.statusCode, 204, 'OPTIONS 预检返回 204');
     eq(r.headers['Access-Control-Allow-Origin'], 'https://a.com', 'CORS 回显请求来源');
 
+    /* 预检必须放行 X-Access-Code，否则带兑换码的请求会被浏览器直接拦截 */
+    r = await open.main_handler(ev('OPTIONS', undefined, {
+      origin: 'https://3209709618-alt.github.io',
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'content-type, x-access-code'
+    }));
+    eq(r.statusCode, 204, '带兑换码头的预检也返回 204');
+    ok(/x-access-code/i.test(r.headers['Access-Control-Allow-Headers']),
+      '预检放行 X-Access-Code（漏了它浏览器会拦截带码请求，用户卡死在输不了码）');
+
     /* --- 配置兑换码：校验生效 --- */
     const gated = loadProxy({ API_KEY: 'k', ACCESS_CODES: 'H30-AAAA-1111, H30-BBBB-2222' });
     r = await gated.main_handler(ev('GET'));
