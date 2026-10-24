@@ -387,7 +387,7 @@ async function proxyTests() {
   console.log('\n[10] 云函数代理：兑换码校验');
   const nodePath = require('path');
   const file = nodePath.resolve(__dirname, '..', 'server', 'tencent-scf', 'index.js');
-  const ENV_KEYS = ['ACCESS_CODES', 'ALLOW_ORIGIN', 'API_KEY', 'BASE_URL', 'MODEL', 'RATE_LIMIT'];
+  const ENV_KEYS = ['ACCESS_CODES', 'CODE_SECRET', 'ALLOW_ORIGIN', 'API_KEY', 'BASE_URL', 'MODEL', 'RATE_LIMIT'];
 
   function loadProxy(env) {
     const saved = {};
@@ -472,6 +472,42 @@ async function proxyTests() {
     const gated2 = loadProxy({ API_KEY: 'k', ACCESS_CODES: 'H30-CCCC-3333，H30-DDDD-4444\nH30-EEEE-5555' });
     r = await gated2.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-EEEE-5555' }));
     eq(r.statusCode, 200, '中文逗号/换行分隔的码表可解析');
+
+    /* --- 签名码（CODE_SECRET）：不存码表，可无限发放 --- */
+    const SECRET = 'test-secret-abc123';
+    const ALPHA = 'ACDEFGHJKMNPQRTUVWXY34679';
+    const sign = seq => {
+      const h = require('crypto').createHmac('sha256', SECRET).update(String(seq)).digest();
+      let out = '';
+      for (let i = 0; i < 6; i++) out += ALPHA[h[i] % ALPHA.length];
+      return out;
+    };
+    const signed = loadProxy({ API_KEY: 'k', ACCESS_CODES: '', CODE_SECRET: SECRET });
+    r = await signed.main_handler(ev('GET'));
+    ok(JSON.parse(r.body).requireCode === true, '只配 CODE_SECRET 时门禁也启用');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }));
+    eq(r.statusCode, 403, '只配 CODE_SECRET 时无码仍 403');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-0001-' + sign(1) }));
+    eq(r.statusCode, 200, '正确的签名码放行');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-0042-' + sign(42) }));
+    eq(r.statusCode, 200, '另一个序号的签名码也放行');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-0001-AAAAAA' }));
+    eq(r.statusCode, 403, '校验位被篡改 → 拒绝');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-9999-' + sign(1) }));
+    eq(r.statusCode, 403, '序号与校验位不匹配 → 拒绝');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-1-' + sign(1) }));
+    eq(r.statusCode, 200, '序号不补零也认（1 与 0001 等价）');
+    r = await signed.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-0001-' + sign(1).toLowerCase() }));
+    eq(r.statusCode, 403, '校验位大小写敏感，小写不认');
+
+    /* --- 白名单与签名码同时生效 --- */
+    const both = loadProxy({ API_KEY: 'k', ACCESS_CODES: 'H30-AAAA-1111', CODE_SECRET: SECRET });
+    r = await both.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-AAAA-1111' }));
+    eq(r.statusCode, 200, '同时配置时白名单码仍有效');
+    r = await both.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-0007-' + sign(7) }));
+    eq(r.statusCode, 200, '同时配置时签名码也有效');
+    r = await both.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-0008-BBBBBB' }));
+    eq(r.statusCode, 403, '同时配置时假签名码仍拒绝');
 
     /* --- 原有校验不被绕过 --- */
     r = await gated.main_handler(ev('POST', { messages: [] }, { 'X-Access-Code': 'H30-AAAA-1111' }));

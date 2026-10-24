@@ -11,6 +11,9 @@
  *   ALLOW_ORIGIN 允许的来源，默认 *；建议填 https://3209709618-alt.github.io
  *   ACCESS_CODES 兑换码白名单，逗号或空格分隔；留空表示不校验（任何人可调用）。
  *                设置后，前端必须带 X-Access-Code 请求头（或 body.code）才能调用。
+ *   CODE_SECRET  签名码密钥。设置后启用 H30-<序号>-<校验位> 形式的兑换码：
+ *                服务端不存码表，可无限发放；改一次密钥，已签发的码全部作废。
+ *                与 ACCESS_CODES 可同时生效（两种码都认）。
  *   MAX_TOKENS   单次最大输出 token，默认 4096
  *   RATE_LIMIT   每个 IP 每小时最多请求次数，默认 30（尽力而为，见 README）
  *
@@ -18,6 +21,8 @@
  * 实际使用哪个模型，只看环境变量 MODEL / BASE_URL，与下面的兜底值无关。
  * ========================================================================== */
 'use strict';
+
+var crypto = require('crypto');
 
 var BASE_URL = String(process.env.BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
 var API_KEY = String(process.env.API_KEY || '');
@@ -34,7 +39,13 @@ var ACCESS_CODES = String(process.env.ACCESS_CODES || '')
   .split(/[\s,，、]+/)
   .map(function (s) { return s.trim(); })
   .filter(Boolean);
-var CODE_GATE = ACCESS_CODES.length > 0;
+
+/* 签名码密钥：设置后用 H30-<序号>-<校验位> 形式的码，服务端不存码表，可无限发放；
+ * 改一次密钥，之前签发的所有码同时作废。与白名单可同时生效。 */
+var CODE_SECRET = String(process.env.CODE_SECRET || '').trim();
+var CODE_ALPHABET = 'ACDEFGHJKMNPQRTUVWXY34679';
+
+var CODE_GATE = ACCESS_CODES.length > 0 || !!CODE_SECRET;
 
 var hits = {}; // 尽力而为的内存限流；冷启动会重置，严格限流见 README
 
@@ -69,10 +80,27 @@ function accessCode(event, body) {
   return String(c == null ? '' : c).trim();
 }
 
-/* 校验放在转发模型之前：无效请求不会消耗模型额度 */
+/* 签名码校验位：HMAC(secret, 序号) 取 6 个字符。不落码表，改 secret 即全废。
+ * 序号先转成数值再签名，所以 H30-1-xxx 与 H30-0001-xxx 等价。 */
+function signSeq(seq) {
+  var h = crypto.createHmac('sha256', CODE_SECRET).update(String(Number(seq))).digest();
+  var out = '';
+  for (var i = 0; i < 6; i++) out += CODE_ALPHABET[h[i] % CODE_ALPHABET.length];
+  return out;
+}
+
+/* 校验放在转发模型之前：无效请求不会消耗模型额度。
+ * 白名单码与签名码都认；两者都没配 → 不校验。 */
 function codeOk(code) {
   if (!CODE_GATE) return true;
-  return ACCESS_CODES.indexOf(code) !== -1;
+  code = String(code || '').trim();
+  if (!code) return false;
+  if (ACCESS_CODES.indexOf(code) !== -1) return true;
+  if (CODE_SECRET) {
+    var m = /^H30-(\d{1,6})-([ACDEFGHJKMNPQRTUVWXY34679]{6})$/.exec(code);
+    if (m && signSeq(m[1]) === m[2]) return true;
+  }
+  return false;
 }
 
 function clientIp(event) {

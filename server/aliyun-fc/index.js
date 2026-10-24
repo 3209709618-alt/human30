@@ -12,6 +12,8 @@
  * ========================================================================== */
 'use strict';
 
+var crypto = require('crypto');
+
 var BASE_URL = String(process.env.BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
 var API_KEY = String(process.env.API_KEY || '');
 var MODEL = String(process.env.MODEL || 'deepseek-chat');
@@ -27,7 +29,11 @@ var ACCESS_CODES = String(process.env.ACCESS_CODES || '')
   .split(/[\s,，、]+/)
   .map(function (s) { return s.trim(); })
   .filter(Boolean);
-var CODE_GATE = ACCESS_CODES.length > 0;
+/* 签名码密钥：设置后用 H30-<序号>-<校验位> 形式的码，服务端不存码表，可无限发放 */
+var CODE_SECRET = String(process.env.CODE_SECRET || '').trim();
+var CODE_ALPHABET = 'ACDEFGHJKMNPQRTUVWXY34679';
+
+var CODE_GATE = ACCESS_CODES.length > 0 || !!CODE_SECRET;
 
 var hits = {};
 
@@ -63,9 +69,25 @@ function accessCode(event, body) {
 }
 
 /* 校验放在转发模型之前：无效请求不会消耗模型额度 */
+/* 签名码校验位：HMAC(secret, 序号) 取 6 个字符。不落码表，改 secret 即全废 */
+function signSeq(seq) {
+  var h = crypto.createHmac('sha256', CODE_SECRET).update(String(Number(seq))).digest();
+  var out = '';
+  for (var i = 0; i < 6; i++) out += CODE_ALPHABET[h[i] % CODE_ALPHABET.length];
+  return out;
+}
+
+/* 白名单码与签名码都认；两者都没配 → 不校验 */
 function codeOk(code) {
   if (!CODE_GATE) return true;
-  return ACCESS_CODES.indexOf(code) !== -1;
+  code = String(code || '').trim();
+  if (!code) return false;
+  if (ACCESS_CODES.indexOf(code) !== -1) return true;
+  if (CODE_SECRET) {
+    var m = /^H30-(\d{1,6})-([ACDEFGHJKMNPQRTUVWXY34679]{6})$/.exec(code);
+    if (m && signSeq(m[1]) === m[2]) return true;
+  }
+  return false;
 }
 
 function clientIp(event) {
