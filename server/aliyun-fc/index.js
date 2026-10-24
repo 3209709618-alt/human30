@@ -7,14 +7,14 @@
  * 这样不管建的是哪种函数类型，都能跑。
  *
  * 环境变量：
- *   BASE_URL / API_KEY / MODEL / ALLOW_ORIGIN / MAX_TOKENS / RATE_LIMIT
+ *   BASE_URL / API_KEY / MODEL / ALLOW_ORIGIN / ACCESS_CODES / MAX_TOKENS / RATE_LIMIT
  *   ACCESS_CODES  兑换码白名单，逗号或空格分隔；留空表示不校验（任何人可调用）
  * ========================================================================== */
 'use strict';
 
-var BASE_URL = String(process.env.BASE_URL || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
+var BASE_URL = String(process.env.BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
 var API_KEY = String(process.env.API_KEY || '');
-var MODEL = String(process.env.MODEL || 'zai-org/GLM-5.3-Flash');
+var MODEL = String(process.env.MODEL || 'deepseek-chat');
 var ALLOW_ORIGIN = String(process.env.ALLOW_ORIGIN || '*');
 var MAX_TOKENS = Math.min(Number(process.env.MAX_TOKENS || 4096) || 4096, 8192);
 var RATE_LIMIT = Math.max(1, Number(process.env.RATE_LIMIT || 30) || 30);

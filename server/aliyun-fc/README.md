@@ -18,8 +18,8 @@
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `API_KEY` | 是 | 你的模型服务商 Key，**只填这里** |
-| `BASE_URL` | 否 | 默认 `https://api.siliconflow.cn/v1` |
-| `MODEL` | 否 | 默认 `zai-org/GLM-5.3-Flash` |
+| `BASE_URL` | 否 | 默认 `https://api.deepseek.com/v1` |
+| `MODEL` | 否 | 默认 `deepseek-chat`（当前部署即此值） |
 | `ALLOW_ORIGIN` | 否 | 建议 `https://3209709618-alt.github.io` |
 | `MAX_TOKENS` | 否 | 默认 4096 |
 | `RATE_LIMIT` | 否 | 每 IP 每小时请求上限，默认 30 |
@@ -39,7 +39,7 @@
 浏览器直接打开公网地址（GET），应返回：
 
 ```json
-{"ok":true,"configured":true,"model":"zai-org/GLM-5.3-Flash"}
+{"ok":true,"configured":true,"model":"deepseek-chat","requireCode":false}
 ```
 
 `configured:false` 说明 `API_KEY` 没填或没保存。

@@ -16,8 +16,8 @@
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
 | `API_KEY` | 是 | 你的模型服务商 Key。**只填在这里，不要写进代码或仓库** |
-| `BASE_URL` | 否 | 默认 `https://api.siliconflow.cn/v1` |
-| `MODEL` | 否 | 默认 `zai-org/GLM-5.3-Flash` |
+| `BASE_URL` | 否 | 默认 `https://api.deepseek.com/v1` |
+| `MODEL` | 否 | 默认 `deepseek-chat`（当前部署即此值） |
 | `ALLOW_ORIGIN` | 否 | 建议填 `https://3209709618-alt.github.io` |
 | `ACCESS_CODES` | 否 | **兑换码白名单**，逗号/空格/中文逗号分隔。留空 = 不校验（任何人可调用）。设置后前端必须带 `X-Access-Code` 请求头（或 `body.code`）才能调用，无效请求在转发模型前就被拒绝，不消耗额度 |
 | `MAX_TOKENS` | 否 | 单次最大输出，默认 4096 |

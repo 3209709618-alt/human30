@@ -5,9 +5,9 @@
  * 前端永远拿不到 Key。
  *
  * 环境变量：
- *   BASE_URL     模型服务商地址，默认 https://api.siliconflow.cn/v1
+ *   BASE_URL     模型服务商地址，默认 https://api.deepseek.com/v1
  *   API_KEY      你的 Key（必填，不要写进代码或仓库）
- *   MODEL        模型名，默认 zai-org/GLM-5.3-Flash
+ *   MODEL        模型名，默认 deepseek-chat（当前部署即此值）
  *   ALLOW_ORIGIN 允许的来源，默认 *；建议填 https://3209709618-alt.github.io
  *   ACCESS_CODES 兑换码白名单，逗号或空格分隔；留空表示不校验（任何人可调用）。
  *                设置后，前端必须带 X-Access-Code 请求头（或 body.code）才能调用。
@@ -15,12 +15,13 @@
  *   RATE_LIMIT   每个 IP 每小时最多请求次数，默认 30（尽力而为，见 README）
  *
  * 说明：本函数只做转发，不落盘、不记录对话内容。
+ * 实际使用哪个模型，只看环境变量 MODEL / BASE_URL，与下面的兜底值无关。
  * ========================================================================== */
 'use strict';
 
-var BASE_URL = String(process.env.BASE_URL || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
+var BASE_URL = String(process.env.BASE_URL || 'https://api.deepseek.com/v1').replace(/\/+$/, '');
 var API_KEY = String(process.env.API_KEY || '');
-var MODEL = String(process.env.MODEL || 'zai-org/GLM-5.3-Flash');
+var MODEL = String(process.env.MODEL || 'deepseek-chat');
 var ALLOW_ORIGIN = String(process.env.ALLOW_ORIGIN || '*');
 var MAX_TOKENS = Math.min(Number(process.env.MAX_TOKENS || 4096) || 4096, 8192);
 var RATE_LIMIT = Math.max(1, Number(process.env.RATE_LIMIT || 30) || 30);
