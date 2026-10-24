@@ -1577,6 +1577,33 @@ code {
 .ai-finish-row { display: flex; justify-content: center; }
 .ai-finish-row .btn { width: 100%; }
 
+/* 兑换码门禁 */
+.ai-code {
+  margin-top: 4px;
+  padding: 18px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+}
+.ai-code-title { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--ink); }
+.ai-code-tip { margin: 0 0 14px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.ai-code-row { display: flex; gap: 10px; align-items: stretch; }
+.ai-code-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.ai-code-row input:focus { outline: none; border-color: rgba(200, 154, 85, 0.5); }
+.ai-code-row .btn { white-space: nowrap; }
+.ai-code-err { margin: 10px 0 0; font-size: 13px; color: var(--danger); }
+
 /* AI 报告新增区块 */
 .core-card {
   margin-top: 14px;

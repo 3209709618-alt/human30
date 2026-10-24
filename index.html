@@ -338,11 +338,20 @@
       </div>
       <div class="ai-msg-list" id="aiMsgList"></div>
       <div class="ai-err" id="aiChatErr" hidden></div>
-      <div class="ai-inputbar">
+      <div class="ai-inputbar" id="aiInputBar">
         <textarea id="aiInput" rows="2" placeholder="用真实经历回答，不用理想中的自己回答……"></textarea>
         <button class="btn btn-primary" id="aiSend" type="button">发送</button>
       </div>
-      <div class="ai-finish-row">
+      <div class="ai-code" id="aiCodeBox" hidden>
+        <p class="ai-code-title">解锁 AI 深聊</p>
+        <p class="ai-code-tip">32 题与初步画像免费；深聊追问和深度报告需要兑换码。</p>
+        <div class="ai-code-row">
+          <input id="aiCodeInput" type="text" placeholder="请输入兑换码" autocomplete="off" spellcheck="false">
+          <button class="btn btn-primary" id="aiCodeBtn" type="button">解锁并继续</button>
+        </div>
+        <p class="ai-code-err" id="aiCodeErr" hidden></p>
+      </div>
+      <div class="ai-finish-row" id="aiFinishRow">
         <button class="btn btn-ghost" id="aiFinish" type="button">结束深聊并生成报告</button>
       </div>
     </div>

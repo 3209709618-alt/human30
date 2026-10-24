@@ -17,9 +17,12 @@
     report: null,      // AI 最终报告
     ruleReport: null,  // 规则引擎初步报告
     payload: null,     // { answers, questions, note, report }
+    code: '',          // 兑换码：只存内存，刷新即失效
     busy: false,
     finished: false
   };
+
+  var pendingRetry = null;   // 兑换码通过后要重试的动作
 
   var counterReady = false;
 
@@ -72,14 +75,21 @@
       temperature: 0.7,
       max_tokens: 4096
     };
+    var headers = { 'Content-Type': 'application/json' };
+    if (state.code) headers['X-Access-Code'] = state.code;
     return fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: headers,
       body: JSON.stringify(body)
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (!r.ok) {
           var m = j && j.error && (j.error.message || j.error);
+          if (j && j.error && j.error.code === 'ACCESS_CODE') {
+            var codeErr = new Error(m || '兑换码无效或未填写，请检查后重试');
+            codeErr.needCode = true;
+            throw codeErr;
+          }
           throw new Error(friendlyError(r.status, m));
         }
         if (j && typeof j.content === 'string' && j.content) return j.content;
@@ -146,6 +156,36 @@
     if (back) back.addEventListener('click', function () { if (root.H30App) root.H30App.go('prelim'); });
   }
 
+  /* 兑换码门禁：云函数返回 ACCESS_CODE 时弹出输入框，并记住待重试的动作。
+   * 码只写进内存（state.code），不使用任何浏览器存储。 */
+  function showCodeBox(retry, msg) {
+    pendingRetry = retry || null;
+    var err = $('aiCodeErr');
+    if (msg) { err.textContent = msg; err.hidden = false; } else { err.textContent = ''; err.hidden = true; }
+    $('aiCodeBox').hidden = false;
+    $('aiInputBar').hidden = true;
+    $('aiFinishRow').hidden = true;
+    $('aiCodeInput').value = '';
+    $('aiCodeInput').focus();
+  }
+
+  function hideCodeBox() {
+    $('aiCodeBox').hidden = true;
+    $('aiInputBar').hidden = false;
+    $('aiFinishRow').hidden = false;
+  }
+
+  function submitCode() {
+    var v = String($('aiCodeInput').value || '').trim();
+    var err = $('aiCodeErr');
+    if (!v) { err.textContent = '请输入兑换码'; err.hidden = false; return; }
+    state.code = v;
+    hideCodeBox();
+    var retry = pendingRetry;
+    pendingRetry = null;
+    if (retry) retry();
+  }
+
   function mountChat() {
     renderMessages();
     $('aiInput').value = '';
@@ -169,6 +209,7 @@
       state.busy = false;
       updateChatMeta();
       renderMessages();
+      if (e && e.needCode) { showCodeBox(askFirst, e.message); return; }
       showChatErr(netErr(e), askFirst);
     });
   }
@@ -203,6 +244,11 @@
       state.busy = false;
       updateChatMeta();
       renderMessages();
+      if (e && e.needCode) {
+        state.messages.pop(); // 移除未成功发送的用户消息，避免重复
+        showCodeBox(function () { sendUser(text); }, e.message);
+        return;
+      }
       showChatErr(netErr(e), function () {
         state.messages.pop(); // 移除未成功发送的用户消息，避免重复
         sendUser(text);
@@ -238,6 +284,7 @@
       state.busy = false;
       updateChatMeta();
       renderMessages();
+      if (e && e.needCode) { showCodeBox(finishInterview, e.message); return; }
       showChatErr(netErr(e), finishInterview);
     });
   }
@@ -540,6 +587,11 @@
     });
     $('aiFinish').addEventListener('click', finishInterview);
     $('aiRestartChat').addEventListener('click', restart);
+
+    $('aiCodeBtn').addEventListener('click', submitCode);
+    $('aiCodeInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); submitCode(); }
+    });
 
     $('aiReportCopy').addEventListener('click', copyReport);
     $('aiReportRestart').addEventListener('click', function () {

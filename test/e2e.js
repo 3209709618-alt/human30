@@ -11,7 +11,7 @@ const path = require('path');
 const { chromium } = require('C:/Users/32097/AppData/Roaming/npm/node_modules/@playwright/mcp/node_modules/playwright-core');
 
 const ROOT = path.resolve(__dirname, '..');
-const PORT = 8901;
+const PORT = 18731;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
 
 const MIME = {
@@ -348,6 +348,69 @@ async function newPage(browser, query) {
       ok((await page.textContent('#screen-ai-report')).includes('不是心理、医疗或职业诊断'), '最终报告带声明');
       ok((await page.textContent('#screen-ai-report')).includes('Dan Koe'), '最终报告标注理论来源');
       ok(await page.evaluate(() => localStorage.getItem('h30.ai.v1') === null), '不再写本地存储');
+      await ctx.close();
+    }
+
+    {
+      console.log('\n[兑换码门禁] 403 → 弹出输入框 → 输入后自动重试');
+      const { ctx, page } = await newPage(browser);
+      const VALID = 'H30-TEST-0001';
+      await page.route('**/mock-proxy', route => {
+        const code = route.request().headers()['x-access-code'] || '';
+        if (code !== VALID) {
+          route.fulfill({
+            status: 403, contentType: 'application/json',
+            body: JSON.stringify({ error: { message: '兑换码无效或未填写，请检查后重试', code: 'ACCESS_CODE' } })
+          });
+          return;
+        }
+        const body = route.request().postDataJSON();
+        const msgs = body.messages || [];
+        const last = (msgs[msgs.length - 1] || {}).content || '';
+        const isReport = last.includes('json');
+        route.fulfill({
+          status: 200, contentType: 'application/json',
+          body: JSON.stringify({
+            content: isReport
+              ? '访谈完成，我现在整理报告。\n```json\n' + JSON.stringify(reportJson) + '\n```'
+              : '能说一个最近的具体例子吗？'
+          })
+        });
+      });
+
+      await page.evaluate(() => { window.HUMAN30_CONFIG.AI_PROXY_URL = 'http://127.0.0.1:' + 18731 + '/mock-proxy'; });
+      await page.click('#heroStart');
+      await page.click('#setupStart');
+      for (let i = 0; i < 31; i++) {
+        await page.locator('#stepView .opt').first().click();
+        await page.locator('[data-nav="next"]').click();
+      }
+      await page.locator('#stepView .opt').first().click();
+      await page.locator('[data-nav="next"]').click();
+
+      await page.click('#prelimDeep');
+      await page.waitForSelector('#aiCodeBox:not([hidden])', { timeout: 8000 });
+      ok(await page.isHidden('#aiInputBar'), '兑换码未通过时隐藏聊天输入框');
+      ok(await page.isHidden('#aiFinishRow'), '兑换码未通过时隐藏结束按钮');
+      ok((await page.textContent('#aiCodeErr')).includes('兑换码'), '首次弹出即显示服务端返回的原因');
+
+      await page.fill('#aiCodeInput', 'WRONG-CODE');
+      await page.click('#aiCodeBtn');
+      await page.waitForFunction(() => !document.querySelector('#aiCodeErr').hidden, null, { timeout: 8000 });
+      ok((await page.textContent('#aiCodeErr')).includes('兑换码'), '错误兑换码有提示');
+
+      await page.fill('#aiCodeInput', VALID);
+      await page.click('#aiCodeBtn');
+      await page.waitForFunction(() => document.querySelectorAll('.ai-row.ai').length >= 2, null, { timeout: 8000 });
+      ok(await page.isVisible('#aiInputBar'), '兑换码通过后恢复输入框');
+      ok((await page.textContent('#aiMsgList')).includes('具体例子'), '通过后自动重试并拿到首问');
+
+      await page.fill('#aiInput', '最近一次是开始跑步。');
+      await page.click('#aiSend');
+      await page.waitForFunction(() => document.querySelectorAll('.ai-row.ai').length >= 3, null, { timeout: 8000 });
+      ok((await page.textContent('#aiMsgList')).includes('具体例子'), '后续请求自动带上兑换码');
+
+      ok(await page.evaluate(() => sessionStorage.length === 0 && localStorage.length === 0), '兑换码不写入任何浏览器存储');
       await ctx.close();
     }
 

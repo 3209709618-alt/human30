@@ -9,6 +9,8 @@
  *   API_KEY      你的 Key（必填，不要写进代码或仓库）
  *   MODEL        模型名，默认 zai-org/GLM-5.3-Flash
  *   ALLOW_ORIGIN 允许的来源，默认 *；建议填 https://3209709618-alt.github.io
+ *   ACCESS_CODES 兑换码白名单，逗号或空格分隔；留空表示不校验（任何人可调用）。
+ *                设置后，前端必须带 X-Access-Code 请求头（或 body.code）才能调用。
  *   MAX_TOKENS   单次最大输出 token，默认 4096
  *   RATE_LIMIT   每个 IP 每小时最多请求次数，默认 30（尽力而为，见 README）
  *
@@ -25,6 +27,13 @@ var RATE_LIMIT = Math.max(1, Number(process.env.RATE_LIMIT || 30) || 30);
 var RATE_WINDOW = 60 * 60 * 1000;
 var MAX_MESSAGES = 60;
 var MAX_ASSISTANT_TURNS = 10;
+
+/* 兑换码白名单：未配置时不启用校验，保持「任何人可调用」的旧行为 */
+var ACCESS_CODES = String(process.env.ACCESS_CODES || '')
+  .split(/[\s,，、]+/)
+  .map(function (s) { return s.trim(); })
+  .filter(Boolean);
+var CODE_GATE = ACCESS_CODES.length > 0;
 
 var hits = {}; // 尽力而为的内存限流；冷启动会重置，严格限流见 README
 
@@ -50,6 +59,19 @@ function header(event, name) {
     if (k.toLowerCase() === lower) return h[k];
   }
   return '';
+}
+
+/* 兑换码：优先取请求头，其次取 body.code / body.accessCode */
+function accessCode(event, body) {
+  var c = header(event, 'x-access-code');
+  if (!c && body) c = body.code || body.accessCode;
+  return String(c == null ? '' : c).trim();
+}
+
+/* 校验放在转发模型之前：无效请求不会消耗模型额度 */
+function codeOk(code) {
+  if (!CODE_GATE) return true;
+  return ACCESS_CODES.indexOf(code) !== -1;
 }
 
 function clientIp(event) {
@@ -85,7 +107,7 @@ exports.main_handler = async function (event) {
     return { statusCode: 204, headers: corsHeaders(origin), body: '', isBase64Encoded: false };
   }
   if (method === 'GET') {
-    return reply(200, { ok: true, configured: !!API_KEY, model: MODEL }, origin);
+    return reply(200, { ok: true, configured: !!API_KEY, model: MODEL, requireCode: CODE_GATE }, origin);
   }
   if (method !== 'POST') {
     return reply(405, { error: { message: '只支持 POST' } }, origin);
@@ -116,6 +138,11 @@ exports.main_handler = async function (event) {
   var turns = messages.filter(function (m) { return m && m.role === 'assistant'; }).length;
   if (turns > MAX_ASSISTANT_TURNS) {
     return reply(400, { error: { message: '追问轮次超过上限' } }, origin);
+  }
+  if (!codeOk(accessCode(event, body))) {
+    return reply(403, {
+      error: { message: '兑换码无效或未填写，请检查后重试', code: 'ACCESS_CODE' }
+    }, origin);
   }
 
   var payload = {

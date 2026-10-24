@@ -117,6 +117,7 @@ const prompt = fs.readFileSync(path.join(ROOT, 'assets/ai-prompt.js'), 'utf8');
 const mustInPrompt = [
   ['时间盒', '4–8'],
   ['角色锁定（防注入）', '角色锁定'],
+  ['禁止提前输出报告', '禁止提前输出报告'],
   ['未知汇总规则', '无证据'],
   ['结构化契约', 'json 代码块'],
   ['结束语', '访谈完成'],

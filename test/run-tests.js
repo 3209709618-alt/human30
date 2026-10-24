@@ -233,13 +233,104 @@ console.log('\n[8] 文本工具');
   ok(Array.isArray(r.data.quadrants[0].strengths), '数组成员被补齐');
 })();
 
-/* ---------------------------------------------------------- 汇总 */
-console.log('\n----------------------------------------');
-console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
-if (fail) {
-  console.log('\n失败明细：');
-  failures.slice(0, 40).forEach(f => console.log(' - ' + f));
-  process.exit(1);
-} else {
-  console.log('全部规则测试通过。');
+/* --------------------------------------- [9] 云函数代理：兑换码校验与转发 */
+async function proxyTests() {
+  console.log('\n[9] 云函数代理：兑换码校验');
+  const nodePath = require('path');
+  const file = nodePath.resolve(__dirname, '..', 'server', 'tencent-scf', 'index.js');
+  const ENV_KEYS = ['ACCESS_CODES', 'ALLOW_ORIGIN', 'API_KEY', 'BASE_URL', 'MODEL', 'RATE_LIMIT'];
+
+  function loadProxy(env) {
+    const saved = {};
+    ENV_KEYS.forEach(k => {
+      saved[k] = process.env[k];
+      if (env[k] === undefined) delete process.env[k]; else process.env[k] = env[k];
+    });
+    delete require.cache[require.resolve(file)];
+    const mod = require(file);
+    ENV_KEYS.forEach(k => {
+      if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k];
+    });
+    return mod;
+  }
+
+  function ev(method, body, headers) {
+    return {
+      httpMethod: method,
+      headers: headers || {},
+      body: body === undefined ? undefined : JSON.stringify(body),
+      isBase64Encoded: false,
+      requestContext: { sourceIp: '1.2.3.4' }
+    };
+  }
+
+  const realFetch = globalThis.fetch;
+  let upstream = 0;
+  globalThis.fetch = async function () {
+    upstream++;
+    return { ok: true, status: 200, text: async () => JSON.stringify({ choices: [{ message: { content: '模型回复' } }] }) };
+  };
+
+  const MSGS = [{ role: 'user', content: 'hi' }];
+
+  try {
+    /* --- 未配置兑换码：不校验，保持旧行为 --- */
+    const open = loadProxy({ API_KEY: 'k', ACCESS_CODES: '', ALLOW_ORIGIN: 'https://3209709618-alt.github.io' });
+    let r = await open.main_handler(ev('POST', { messages: MSGS }));
+    eq(r.statusCode, 200, '未配置 ACCESS_CODES 时不校验，直接放行');
+    eq(upstream, 1, '放行时会转发到模型');
+    r = await open.main_handler(ev('GET'));
+    ok(JSON.parse(r.body).requireCode === false, '未配置时 GET 返回 requireCode=false');
+    r = await open.main_handler(ev('OPTIONS', undefined, { origin: 'https://a.com' }));
+    eq(r.statusCode, 204, 'OPTIONS 预检返回 204');
+    eq(r.headers['Access-Control-Allow-Origin'], 'https://a.com', 'CORS 回显请求来源');
+
+    /* --- 配置兑换码：校验生效 --- */
+    const gated = loadProxy({ API_KEY: 'k', ACCESS_CODES: 'H30-AAAA-1111, H30-BBBB-2222' });
+    r = await gated.main_handler(ev('GET'));
+    ok(JSON.parse(r.body).requireCode === true, '配置后 GET 返回 requireCode=true');
+
+    const before = upstream;
+    r = await gated.main_handler(ev('POST', { messages: MSGS }));
+    eq(r.statusCode, 403, '未带兑换码返回 403');
+    eq(JSON.parse(r.body).error.code, 'ACCESS_CODE', '403 带 ACCESS_CODE 标识');
+    eq(upstream, before, '403 不转发到模型，不消耗额度');
+
+    r = await gated.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'WRONG-CODE' }));
+    eq(r.statusCode, 403, '错误兑换码返回 403');
+    eq(upstream, before, '错误码同样不转发到模型');
+
+    r = await gated.main_handler(ev('POST', { messages: MSGS }, { 'x-access-code': 'H30-BBBB-2222' }));
+    eq(r.statusCode, 200, '正确兑换码（请求头，大小写不敏感）放行');
+    ok(upstream > before, '正确兑换码会转发到模型');
+
+    r = await gated.main_handler(ev('POST', { messages: MSGS, code: 'H30-AAAA-1111' }));
+    eq(r.statusCode, 200, '正确兑换码（body.code）也放行');
+    r = await gated.main_handler(ev('POST', { messages: MSGS, accessCode: '  H30-AAAA-1111  ' }));
+    eq(r.statusCode, 200, '兑换码首尾空格被容忍');
+
+    /* --- 中文逗号 / 换行分隔 --- */
+    const gated2 = loadProxy({ API_KEY: 'k', ACCESS_CODES: 'H30-CCCC-3333，H30-DDDD-4444\nH30-EEEE-5555' });
+    r = await gated2.main_handler(ev('POST', { messages: MSGS }, { 'X-Access-Code': 'H30-EEEE-5555' }));
+    eq(r.statusCode, 200, '中文逗号/换行分隔的码表可解析');
+
+    /* --- 原有校验不被绕过 --- */
+    r = await gated.main_handler(ev('POST', { messages: [] }, { 'X-Access-Code': 'H30-AAAA-1111' }));
+    eq(r.statusCode, 400, '带对码但缺 messages 仍返回 400');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 }
+
+proxyTests().then(function () {
+  /* ---------------------------------------------------------- 汇总 */
+  console.log('\n----------------------------------------');
+  console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
+  if (fail) {
+    console.log('\n失败明细：');
+    failures.slice(0, 40).forEach(f => console.log(' - ' + f));
+    process.exit(1);
+  } else {
+    console.log('全部规则测试通过。');
+  }
+});
