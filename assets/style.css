@@ -927,6 +927,13 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   line-height: 1.8;
   color: var(--muted);
 }
+.report-shape {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.report-shape b { color: var(--ink-2); font-weight: 600; }
 
 .type-grid {
   display: grid;

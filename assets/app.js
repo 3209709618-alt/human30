@@ -53,6 +53,13 @@
     return Math.round(sec / 60) + ' 分钟';
   }
 
+  /* 加速器判定的中文说法 */
+  var VERDICT_CN = {
+    hold: '暂不建议使用加速器',
+    caution: '可以谨慎探索',
+    assess: '可进行有明确目标的风险评估'
+  };
+
   function dimById(id) {
     for (var i = 0; i < D.DIMENSIONS.length; i++) {
       if (D.DIMENSIONS[i].id === id) return D.DIMENSIONS[i];
@@ -503,6 +510,16 @@
         typeCard('元类型', r.metatype.name, r.metatype.desc, '由四个维度的发展阶段组合得到，不涉及分数') +
         typeCard('生活方式原型', r.archetype.name, r.archetype.desc, r.archetype.basis) +
         '</div>';
+
+      // 判定层：四维形态、主导维度、加速器判定，全部由规则引擎算出，不随对话漂移
+      var domName = r.dominant && r.dominant !== 'none'
+        ? (r.rows.filter(function (x) { return x.id === r.dominant; })[0] || {}).name
+        : null;
+      html += '<p class="report-shape">四维形态：<b>' + esc(L.SHAPE_CN[r.shape] || r.shape) + '</b>' +
+        ' · 主导维度：<b>' + (domName ? esc(domName) : '无') + '</b>' +
+        (r.accelerator ? ' · 加速器判定：<b>' + esc(VERDICT_CN[r.accelerator] || r.accelerator) + '</b>' : '') +
+        '</p>';
+
       html += linkageCard(r.linkage);
       html += '<div class="actions-card">' +
         '<h3>跨维度建议</h3>' +
