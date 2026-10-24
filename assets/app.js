@@ -27,6 +27,8 @@
     questions: [],
     idx: 0,
     report: null,
+    firstAnswerAt: null,
+    lastAnswerAt: null,
     screen: 'landing'
   };
 
@@ -42,6 +44,13 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  /* 作答时长的人话显示 */
+  function friendlyDuration(sec) {
+    if (typeof sec !== 'number' || sec < 0) return '时间未知';
+    if (sec < 60) return sec + ' 秒';
+    return Math.round(sec / 60) + ' 分钟';
   }
 
   function dimById(id) {
@@ -290,6 +299,11 @@
 
     state.answers[q.id] = q.kind === 'level' ? Number(opt.v) : opt.v;
 
+    // 作答时长：记首次与末次答题时间，用于识别过快作答（只在内存，不落盘）
+    var nowTs = Date.now();
+    if (state.firstAnswerAt === null) state.firstAnswerAt = nowTs;
+    state.lastAnswerAt = nowTs;
+
     btn.parentNode.querySelectorAll('[data-opt]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b === btn));
     });
@@ -353,10 +367,14 @@
   function buildReportData() {
     if (!state.questions.length) return null;
     clearAdvance();
+    var answerSeconds = (state.firstAnswerAt !== null && state.lastAnswerAt !== null)
+      ? Math.round((state.lastAnswerAt - state.firstAnswerAt) / 1000)
+      : null;
     state.report = L.buildReport({
       answers: state.answers,
       questions: state.questions,
       note: state.note,
+      answerSeconds: answerSeconds,
       now: new Date()
     });
     return state.report;
@@ -427,6 +445,8 @@
         '<div class="stage-box"><p class="sb-k">发展阶段 · 粗略定位</p><p class="sb-v">' + esc(row.levelLabel) + '</p></div>' +
         '<div class="stage-box"><p class="sb-k">转变阶段 · 本次判断</p><p class="sb-v">' + esc(row.phaseLabel) + '</p></div>' +
       '</div>' +
+      (row.mixed ? '<p class="dim-mixed">这个维度里你的回答不太一致（同时出现了「已经能做到」和「还做不到」），' +
+        '所以上面的阶段定位只是一个粗略平均，真实情况更可能在两者之间摆动。</p>' : '') +
       '<p class="summary">' + esc(row.levelSummary) + '</p>' +
       '<p class="summary">' + esc(row.phaseSummary) + '</p>' +
       '<p class="r-label">优势</p>' +
@@ -472,6 +492,12 @@
 
     var html = '<p class="report-overview">' + esc(r.overview) + '</p>';
 
+    if (r.fastAnswer) {
+      html += '<div class="answer-quality"><b>作答速度较快</b>' +
+        '（' + esc(friendlyDuration(r.answerSeconds)) + '）。这份报告反映的是你此刻的第一反应，依然有效；' +
+        '但如果想拿到更贴合的结论，建议放慢速度重做一次——尤其在你最近状态有明显波动的时候。</div>';
+    }
+
     if (r.metatype) {
       html += '<div class="type-grid">' +
         typeCard('元类型', r.metatype.name, r.metatype.desc, '由四个维度的发展阶段组合得到，不涉及分数') +
@@ -495,8 +521,7 @@
         '</div>';
     }
 
-    html += '<div class="report-ai"><strong>关于 AI：</strong>' + esc(r.aiNote) +
-      '<br>当前版本不会发送任何网络请求，回答也没有离开这台设备。</div>';
+    html += '<div class="report-ai"><strong>关于 AI：</strong>' + esc(r.aiNote) + '</div>';
 
     $('reportBody').innerHTML = html;
   }

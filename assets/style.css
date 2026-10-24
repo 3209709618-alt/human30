@@ -905,6 +905,29 @@ h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; letter-spacing:
   margin: 0 0 26px;
 }
 
+/* 作答质量提示与单维张力提示 */
+.answer-quality {
+  margin: -8px 0 26px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 3px solid rgba(200, 154, 85, 0.55);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--ink-2);
+}
+.answer-quality b { color: var(--ink); font-weight: 600; }
+.dim-mixed {
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
 .type-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

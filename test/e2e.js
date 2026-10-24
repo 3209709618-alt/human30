@@ -14,6 +14,13 @@ const ROOT = path.resolve(__dirname, '..');
 const PORT = 18731;
 const BASE = 'http://127.0.0.1:' + PORT + '/index.html';
 
+// 规则引擎与「每题都选第一个选项」的答案集：用于核对 AI 不得改判（P0-1）
+require(path.join(ROOT, 'assets/data.js'));
+const L0 = require(path.join(ROOT, 'assets/logic.js'));
+const D0 = globalThis.H30Data;
+const allFirstAnswers = {};
+D0.QUESTIONS.forEach(q => { allFirstAnswers[q.id] = q.options[0].v; });
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -258,7 +265,7 @@ async function newPage(browser, query) {
       const reportJson = {
         metatype: { name: '错位成长型', why: '四个象限不在同一水平线上。', strongest: 'mind', weakest: 'body', unique: '想法多、行动少。', basis: '第 1、3 轮回答' },
         archetype: { name: '拆解问题的探索者', driver: '被问题驱动', mostEnergy: 'mind', sacrificed: 'body', problem: '身体被牺牲', fit: '基本符合' },
-        quadrants: ['mind', 'body', 'spirit', 'vocation'].map((id, i) => ({
+        quadrants: ['mind', 'body', 'relationships', 'vocation'].map((id, i) => ({
           id, level: i + 1, phase: 'uncertainty', evidence: '最近一个月还在调整。',
           strengths: ['能反思'], gaps: ['缺重复行为'], fakeGrowth: '无',
           crossImpact: '影响其他象限', priority: '先解决节奏', confidence: 'medium', uncertain: '压力下的表现未知'
@@ -340,7 +347,11 @@ async function newPage(browser, query) {
       await page.waitForSelector('#screen-ai-report:not([hidden])', { timeout: 8000 });
 
       eq(await page.locator('#aiReportBody .dim-report').count(), 4, '最终报告含四个象限卡');
-      ok((await page.textContent('#aiReportBody')).includes('错位成长型'), '最终报告含元类型');
+      // P0-1：AI 不得改判——最终报告的元类型必须与规则引擎一致
+      const ruleMeta = L0.buildReport({ answers: allFirstAnswers }).metatype.name;
+      const aiMetaHtml = await page.textContent('#aiReportBody');
+      ok(aiMetaHtml.includes(ruleMeta), '最终报告元类型与规则引擎一致（' + ruleMeta + '，AI 不改判）');
+      ok(!aiMetaHtml.includes('错位成长型') || ruleMeta === '错位成长型', 'AI 自判的元类型已被规则引擎覆盖');
       ok((await page.textContent('#aiReportBody')).includes('行动路线'), '最终报告含行动路线');
       ok((await page.textContent('#aiReportBody')).includes('关键警告'), '最终报告含关键警告');
       ok((await page.textContent('#aiReportBody')).includes('可比的类型'), '最终报告含可比的类型');

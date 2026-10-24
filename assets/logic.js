@@ -17,6 +17,9 @@
 
   var DISCLAIMER = '本报告基于 HUMAN 3.0 框架生成，属于自我探索参考：它不是心理、医疗或职业诊断，也不是经过验证的客观测评。结论描述的是这份回答呈现的倾向，不是关于你的定论。理论框架参考 Dan Koe 的 HUMAN 3.0。';
 
+  /* 四维形态展示名：与 logic.js 的 fourShape 一一对应 */
+  var SHAPE_CN = { starting: '全面起步', balanced: '均衡探索', integrated: '整合推进', offset: '错位成长' };
+
   /* ------------------------------------------------------------ 小工具 */
 
   function levelLabel(level, name) {
@@ -46,6 +49,49 @@
     if (avg < 1.75) return 1;
     if (avg < 2.5) return 2;
     return 3;
+  }
+
+  /* 作答张力：同一维度内 1 与 3 并存，且均值正卡在阶段边界附近 */
+  function mixedSignal(values) {
+    if (values.length < 2) return false;
+    if (values.indexOf(1) === -1 || values.indexOf(3) === -1) return false;
+    var avg = values.reduce(function (a, b) { return a + b; }, 0) / values.length;
+    return Math.abs(avg - 1.75) <= 0.25 || Math.abs(avg - 2.5) <= 0.25;
+  }
+
+  /* 四维形态：把四个 level 压成 4 选 1 的枚举，供跨维度分析与 AI 报告共用。
+   * 注意 spread < 2 时不存在「强项拖弱项」，此时必须看整体水平，
+   * 不能因为四维相等就一律说成「均衡」——全为最低档同样是 spread = 0。 */
+  function fourShape(rows) {
+    var levels = rows.map(function (r) { return r.level; });
+    var max = Math.max.apply(null, levels);
+    var min = Math.min.apply(null, levels);
+    var avg = levels.reduce(function (a, b) { return a + b; }, 0) / levels.length;
+    if (max - min >= 2) return 'offset';
+    if (avg < 1.75) return 'starting';
+    if (avg < 2.25) return 'balanced';
+    return 'integrated';
+  }
+
+  /* 主导维度：取 level 最高者；并列或四维完全持平 → none */
+  function fourDominant(rows) {
+    var levels = rows.map(function (r) { return r.level; });
+    var max = Math.max.apply(null, levels);
+    var min = Math.min.apply(null, levels);
+    if (max === min) return 'none';
+    var top = rows.filter(function (r) { return r.level === max; });
+    return top.length === 1 ? top[0].id : 'none';
+  }
+
+  /* 加速器判定：由四维最低发展阶段决定，不让 AI 自行判断。
+   * 最低维还在 1.0 时一律 hold——基础不足时不能鼓励加码。 */
+  function pickAccelerator(rows) {
+    if (rows.length < 4) return null;
+    var min = Math.min.apply(null, rows.map(function (r) { return r.level; }));
+    var avg = rows.reduce(function (a, r) { return a + r.level; }, 0) / rows.length;
+    if (min <= 1) return 'hold';
+    if (avg < 2.5) return 'caution';
+    return 'assess';
   }
 
   /* ------------------------------------------------------------ 题目集 */
@@ -91,6 +137,7 @@
 
     var level = levelValues.length ? pickLevel(levelValues) : 2;
     var phase = phaseValues.length ? pickPhase(phaseValues) : 'u';
+    var mixed = mixedSignal(levelValues);
 
     var lc = D.LEVEL_CONTENT[dimId][level];
     var pc = D.PHASE_CONTENT[dimId][phase];
@@ -130,6 +177,7 @@
       adviceLevel: lc.advice,
       advicePhase: pc.tip,
       basis: basis,
+      mixed: mixed,
       questionCount: pool.length,
       answeredCount: levelValues.length + phaseValues.length
     };
@@ -194,17 +242,30 @@
     };
   }
 
-  /* 跨维度联动：只取最高与最低两个维度之间的关系 */
+  /* 跨维度联动：只取最高与最低两个维度之间的关系。
+   * 四维差距不足 2 档时不存在「强项拖弱项」，改按整体形态给议题——
+   * 全为最低档属于 starting（都还没开始），不是均衡。 */
   function pickLinkage(rows) {
     if (rows.length < 4) return null;
 
     var levels = rows.map(function (r) { return r.level; });
     var max = Math.max.apply(null, levels);
     var min = Math.min.apply(null, levels);
+    var shape = fourShape(rows);
 
-    if (max === min) {
-      var b = D.LINKAGE.balanced;
-      return { key: 'balanced', title: b.title, read: b.read, question: b.question, strong: null, weak: null };
+    if (max - min < 2) {
+      var s = D.LINKAGE[shape];
+      if (s) {
+        return {
+          key: shape,
+          shape: shape,
+          title: s.title,
+          read: s.read,
+          question: s.question,
+          strong: null,
+          weak: null
+        };
+      }
     }
 
     var strong = rows.filter(function (r) { return r.level === max; })[0];
@@ -214,6 +275,7 @@
 
     return {
       key: strong.id + '>' + weak.id,
+      shape: shape,
       title: item.title,
       read: item.read,
       question: item.question,
@@ -227,11 +289,15 @@
   function pickCrossAdvice(rows, linkage) {
     if (!linkage) return null;
 
-    if (linkage.key === 'balanced') {
-      return {
-        priority: null,
-        text: '四个维度的发展程度接近，没有明显的短板。建议先选一个你最想改变的维度，给它一个三个月的具体目标；其余三个保持现状，不要同时开战——同时用力通常一个都稳不住。'
+    // 四维差距不足 2 档：没有明确短板，按整体形态给建议，不写死任何一段文案
+    if (!linkage.strongId) {
+      var byShape = {
+        starting: '四个维度都还在起步。这个阶段最怕四个一起抓——同时用力通常一个都稳不住。先选一个你最想改变的维度，只给它一个三个月的具体目标；其余三个保持现状，等它先站稳。',
+        balanced: '四个维度的发展程度接近，没有特别突出的长板，也没有明显的短板。建议先选一个你最想改变的维度，给它一个三个月的具体目标；其余三个保持现状，不要同时开战——同时用力通常一个都稳不住。',
+        integrated: '四个维度都在较高水平，风险不再是短板，而是同时维持四件事的精力成本。接下来别再加码：选一个维度做深，让它成为其他三个的支点；同时给花时间最少的那个维度设一条最低线，防止忙起来时它先掉。'
       };
+      var shape = linkage.shape || 'balanced';
+      return { priority: null, shape: shape, text: byShape[shape] || byShape.balanced };
     }
 
     var weak = rows.filter(function (r) { return r.id === linkage.weakId; })[0];
@@ -256,6 +322,13 @@
     }
     if (max === min) {
       var same = rows.filter(function (r) { return r.level === max; })[0];
+      var shape = fourShape(rows);
+      if (shape === 'starting') {
+        return '四个维度都还在比较早的阶段——这不是均衡，是都还没有真正开始。';
+      }
+      if (shape === 'integrated') {
+        return '这些维度的发展阶段相当接近，且都落在了' + same.levelLabel + '附近。';
+      }
       return '这些维度的发展阶段相当接近，都落在' + same.levelLabel + '附近。';
     }
     var top = rows.filter(function (r) { return r.level === max; })[0];
@@ -306,6 +379,11 @@
     var archetype = allDims ? pickArchetype(rows) : null;
     var linkage = allDims ? pickLinkage(rows) : null;
     var crossAdvice = allDims ? pickCrossAdvice(rows, linkage) : null;
+    var shape = allDims ? fourShape(rows) : null;
+    var dominant = allDims ? fourDominant(rows) : null;
+    var accelerator = allDims ? pickAccelerator(rows) : null;
+    var coreQuadrant = linkage && linkage.weakId ? linkage.weakId : null;
+    var answerSeconds = typeof input.answerSeconds === 'number' ? input.answerSeconds : null;
     var note = String(input.note || '').trim();
 
     return {
@@ -321,6 +399,12 @@
       archetype: archetype,
       linkage: linkage,
       crossAdvice: crossAdvice,
+      shape: shape,
+      dominant: dominant,
+      accelerator: accelerator,
+      coreQuadrant: coreQuadrant,
+      answerSeconds: answerSeconds,
+      fastAnswer: answerSeconds !== null && answerSeconds > 0 && answerSeconds < 240,
       note: note,
       disclaimer: DISCLAIMER,
       aiNote: planMeta.aiNote
@@ -356,6 +440,13 @@
       lines.push('【生活方式原型】' + report.archetype.name);
       lines.push(report.archetype.desc);
       lines.push('（' + report.archetype.basis + '）');
+      lines.push('');
+
+      lines.push('【四维形态】' + (SHAPE_CN[report.shape] || report.shape) +
+        (report.dominant && report.dominant !== 'none'
+          ? ' · 主导维度：' + (report.rows.filter(function (r) { return r.id === report.dominant; })[0] || {}).name
+          : ' · 无主导维度'));
+      if (report.accelerator) lines.push('【加速器判定】' + report.accelerator);
       lines.push('');
 
       lines.push('【跨维度 · 核心议题】' + (report.linkage.title || ''));
@@ -408,6 +499,10 @@
     buildReport: buildReport,
     toText: toText,
     formatTime: formatTime,
+    fourShape: fourShape,
+    fourDominant: fourDominant,
+    pickAccelerator: pickAccelerator,
+    SHAPE_CN: SHAPE_CN,
     DISCLAIMER: DISCLAIMER
   };
 

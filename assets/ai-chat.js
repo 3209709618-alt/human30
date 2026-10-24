@@ -65,23 +65,41 @@
     return (e && e.message) || '未知错误，请重试。';
   }
 
-  function callModel(messages) {
+  /* 规则引擎的权威判定：AI 只解释不改判，报告里这些字段以此为准 */
+  function ruleExpected() {
+    var r = state.ruleReport || {};
+    return {
+      metatype: r.metatype && r.metatype.name,
+      archetype: r.archetype && r.archetype.name,
+      accelerator: r.accelerator,
+      coreQuadrant: r.coreQuadrant
+    };
+  }
+
+  function callModel(messages, isRetry) {
     var url = proxyUrl();
     if (!url) {
       return Promise.reject(new Error('AI 深聊还没有配置代理地址（AI_PROXY_URL 为空）。'));
     }
     var body = {
       messages: [{ role: 'system', content: AI.buildSystemPrompt() }].concat(messages),
-      temperature: 0.7,
+      temperature: 0.25,
       max_tokens: 4096
     };
     var headers = { 'Content-Type': 'application/json' };
     if (state.code) headers['X-Access-Code'] = state.code;
+
+    // 25 秒超时，超时自动重试一次；重试仍失败才把可读错误抛给上层
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 25000) : null;
+
     return fetch(url, {
       method: 'POST',
       headers: headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: ctrl ? ctrl.signal : undefined
     }).then(function (r) {
+      if (timer) clearTimeout(timer);
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (!r.ok) {
           var m = j && j.error && (j.error.message || j.error);
@@ -97,6 +115,13 @@
         if (c && c.content) return c.content;
         throw new Error('AI 返回了空内容，请重试。');
       });
+    }).catch(function (e) {
+      if (timer) clearTimeout(timer);
+      if (e && e.name === 'AbortError' && !isRetry) return callModel(messages, true);
+      if (e && e.name === 'AbortError') {
+        throw new Error('AI 响应超过 25 秒未返回，自动重试后仍未返回。请检查网络，稍后再试。');
+      }
+      throw e;
     });
   }
 
@@ -230,7 +255,7 @@
       renderMessages();
 
       // 模型若已输出报告 json，直接进入最终报告
-      var parsed = AI.parseReport(reply);
+      var parsed = AI.parseReport(reply, ruleExpected());
       if (parsed.ok) {
         state.report = parsed.data;
         state.finished = true;
@@ -256,7 +281,7 @@
     });
   }
 
-  function finishInterview() {
+  function finishInterview(isRetry) {
     if (state.busy || !state.messages.length) return;
     state.busy = true;
     updateChatMeta();
@@ -264,10 +289,17 @@
     var trigger = { role: 'user', content: '请现在输出最终报告的 json。' };
 
     callModel(apiMessages().concat([trigger])).then(function (reply) {
+      var parsed = AI.parseReport(reply, ruleExpected());
+      state.busy = false;
+      if (!parsed.ok && !isRetry) {
+        // 枚举校验失败：自动重试一次，仍失败才提示用户手动重试
+        updateChatMeta();
+        renderMessages();
+        finishInterview(true);
+        return;
+      }
       state.messages.push(trigger);
       state.messages.push({ role: 'assistant', content: reply });
-      var parsed = AI.parseReport(reply);
-      state.busy = false;
       if (!parsed.ok) {
         state.finished = true;
         updateChatMeta();
@@ -360,9 +392,15 @@
     if (!r) return;
     var m1 = r.roadmap.month1 || {}, m3 = r.roadmap.month3 || {}, y1 = r.roadmap.year1 || {};
 
+    var shapeCn = (root.H30Logic && root.H30Logic.SHAPE_CN) || {};
+    var shapeTxt = state.ruleReport && state.ruleReport.shape
+      ? (shapeCn[state.ruleReport.shape] || state.ruleReport.shape)
+      : null;
+
     $('aiReportMeta').innerHTML =
       '<span>' + esc(new Date().toLocaleString('zh-CN', { hour12: false })) + '</span>' +
       '<span>32 题 + ' + turnCount() + ' 轮深聊</span>' +
+      (shapeTxt ? '<span>四维形态：' + esc(shapeTxt) + '</span>' : '') +
       '<span>HUMAN 3.0 深度报告</span>';
 
     var html = '<p class="report-overview">' + esc(r.metatype.why) + '</p>';

@@ -223,19 +223,168 @@ console.log('\n[8] 文本工具');
   // 解析：接受并规范化好输入
   const raw = {
     metatype: { name: '错位成长型' }, archetype: { name: '清醒的设计者' },
-    quadrants: [{ id: 'vocation' }, { id: 'mind' }, { id: 'body' }, { id: 'spirit' }],
+    quadrants: [{ id: 'vocation' }, { id: 'mind' }, { id: 'body' }, { id: 'relationships' }],
     crossDynamics: {}, coreProblem: {}, roadmap: {}, accelerator: {}, warnings: {}, finalFeedback: '反馈'
   };
   const r = AI.parseReport('访谈完成，我现在整理报告。\n\`\`\`json\n' + JSON.stringify(raw) + '\n\`\`\`');
   ok(r.ok, '完整报告被接受');
-  ok(r.data.quadrants.map(q => q.id).join(',') === 'mind,body,spirit,vocation', '四象限被排序规范化');
+  ok(r.data.quadrants.map(q => q.id).join(',') === 'mind,body,relationships,vocation', '四象限被排序规范化');
   ok(r.data.quadrants.every(q => q.level === 1 && q.phase === 'uncertainty'), '缺失字段有默认值');
   ok(Array.isArray(r.data.quadrants[0].strengths), '数组成员被补齐');
 })();
 
+/* --------------------------------- [10] 判定确定化与「均衡」误判修复 */
+console.log('\n[9] 判定确定化与均衡误判修复');
+
+function answersWithLevel(lv) {
+  const a = {};
+  D.QUESTIONS.forEach(q => {
+    if (q.kind === 'level') {
+      a[q.id] = (q.options.filter(o => Number(o.v) === lv)[0] || q.options[0]).v;
+    } else {
+      a[q.id] = q.options[0].v;
+    }
+  });
+  return a;
+}
+function answersByDim(map) {
+  const a = {};
+  D.QUESTIONS.forEach(q => {
+    if (q.kind === 'level') {
+      a[q.id] = (q.options.filter(o => Number(o.v) === map[q.dim])[0] || q.options[0]).v;
+    } else {
+      a[q.id] = q.options[0].v;
+    }
+  });
+  return a;
+}
+
+/* P0-2：四维全为最低档，不能再被告知「均衡」 */
+const low = L.buildReport({ answers: answersWithLevel(1) });
+eq(low.shape, 'starting', '四维全为 1 → shape = starting');
+eq(low.dominant, 'none', '四维全为 1 → dominant = none');
+eq(low.accelerator, 'hold', '四维全为 1 → 加速器判定 = hold');
+eq(low.linkage.key, 'starting', '四维全为 1 → 联动议题用 starting');
+ok(!/没有明显的短板/.test(JSON.stringify(low)), '全最低档不再出现「没有明显的短板」');
+ok(low.overview.indexOf('这不是均衡') !== -1, '总览明说「不是均衡，是都还没开始」');
+ok(low.crossAdvice.text.indexOf('四个维度都还在起步') !== -1, '跨维度建议按 starting 分支');
+
+eq(L.buildReport({ answers: answersWithLevel(2) }).shape, 'balanced', '四维全为 2 → balanced');
+eq(L.buildReport({ answers: answersWithLevel(3) }).shape, 'integrated', '四维全为 3 → integrated');
+
+/* 形态与主导维度 */
+const off = L.buildReport({ answers: answersByDim({ mind: 3, body: 1, relationships: 2, vocation: 2 }) });
+eq(off.shape, 'offset', 'spread = 2 → offset');
+eq(off.dominant, 'mind', '最高维唯一 → dominant = mind');
+eq(off.coreQuadrant, 'body', '核心问题象限 = 最弱维度');
+eq(L.buildReport({ answers: answersByDim({ mind: 3, body: 3, relationships: 2, vocation: 2 }) }).dominant, 'none', '最高维并列 → dominant = none');
+
+/* 穷举 81 种四维 level 组合，形态与主导维度必须唯一确定 */
+const seen = {};
+let combos = 0;
+for (let a1 = 1; a1 <= 3; a1++) for (let a2 = 1; a2 <= 3; a2++) for (let a3 = 1; a3 <= 3; a3++) for (let a4 = 1; a4 <= 3; a4++) {
+  const rr = L.buildReport({ answers: answersByDim({ mind: a1, body: a2, relationships: a3, vocation: a4 }) });
+  seen[rr.shape + '|' + rr.dominant] = true;
+  combos++;
+}
+eq(combos, 81, '穷举 81 种四维组合');
+console.log('  出现的 形态|主导 组合：' + Object.keys(seen).sort().join('  '));
+
+/* P1-6：作答时长 */
+eq(L.buildReport({ answers: answersWithLevel(2), answerSeconds: 1800 }).fastAnswer, false, '作答 30 分钟不标记过快');
+eq(L.buildReport({ answers: answersWithLevel(2), answerSeconds: 90 }).fastAnswer, true, '作答 90 秒标记过快');
+eq(L.buildReport({ answers: answersWithLevel(2), answerSeconds: 240 }).fastAnswer, false, '刚好 4 分钟不标记过快');
+eq(L.buildReport({ answers: answersWithLevel(2) }).fastAnswer, false, '未记录时长不标记过快');
+
+/* P1-6：单维作答张力 */
+const mixedA = {};
+D.QUESTIONS.forEach((q, i) => {
+  if (q.kind !== 'level') { mixedA[q.id] = q.options[0].v; return; }
+  const lv = (i % 2 === 0) ? 1 : 3;
+  mixedA[q.id] = (q.options.filter(o => Number(o.v) === lv)[0] || q.options[0]).v;
+});
+D.DIM_ORDER.forEach(id => {
+  eq(L.analyzeDimension(id, mixedA, D.QUESTIONS).mixed, true, id + ' 1 与 3 并存 → mixed = true');
+});
+D.DIM_ORDER.forEach(id => {
+  eq(L.analyzeDimension(id, answersWithLevel(2), D.QUESTIONS).mixed, false, id + '答案一致 → mixed = false');
+});
+
+/* P0-1：parseReport 枚举白名单 */
+const META_NAMES = Object.keys(D.METATYPES).map(k => D.METATYPES[k].name);
+const ARCH_NAMES = [];
+Object.keys(D.ARCHETYPES).forEach(d => Object.keys(D.ARCHETYPES[d]).forEach(p => ARCH_NAMES.push(D.ARCHETYPES[d][p].name)));
+
+function validReport() {
+  return {
+    metatype: { name: META_NAMES[0], why: 'w', strongest: 'mind', weakest: 'body', unique: 'u', basis: 'b' },
+    archetype: { name: ARCH_NAMES[0], driver: 'd', mostEnergy: 'mind', sacrificed: 'body', problem: 'p', fit: 'f' },
+    quadrants: ['mind', 'body', 'relationships', 'vocation'].map((id, i) => ({
+      id, level: i + 1, phase: 'uncertainty', evidence: 'e', strengths: ['s'], gaps: ['g'],
+      fakeGrowth: '无', crossImpact: 'c', priority: 'p', confidence: 'medium', uncertain: 'u'
+    })),
+    crossDynamics: { blocker: 'body', lever: 'mind', rootCause: 'body', chainRisk: 'r', hiddenPattern: 'h' },
+    coreProblem: { quadrant: 'body', what: 'w', whyRoot: 'r', impact: 'i', whyNow: 'n' },
+    roadmap: {
+      day1: 'd',
+      month1: { goal: 'g', daily: 'd', weekly: 'w', crossSupport: 'c', successSignal: 's', avoid: 'a' },
+      month3: { change: 'c', skill: 's', relapseGuard: 'r', support: 's', signal: 's' },
+      year1: { nextStage: 'n', newProblem: 'p', interlock: 'i', lifestyle: 'l' }
+    },
+    accelerator: { verdict: 'caution', missingBase: 'm', aiUse: 'a', outsourcingRisk: 'o', dependencySignals: 'd' },
+    warnings: { regressionTrigger: 'r', fakeGrowthTrap: 'f', chainRisk: 'c', selfDeception: 's' },
+    comparable: [{ name: 'n', similar: 's', difference: 'd' }],
+    finalFeedback: 'f'
+  };
+}
+function wrapReport(obj) { return '访谈完成，我现在整理报告。\n\`\`\`json\n' + JSON.stringify(obj) + '\n\`\`\`'; }
+
+ok(AI.parseReport(wrapReport(validReport())).ok, '枚举全部合法的报告被接受');
+
+const badMeta = validReport(); badMeta.metatype.name = '自创的元类型';
+const rBadMeta = AI.parseReport(wrapReport(badMeta));
+ok(!rBadMeta.ok && /枚举字段越界/.test(rBadMeta.error), '元类型名越界 → 判 FAIL');
+
+const badVerdict = validReport(); badVerdict.accelerator.verdict = 'maybe';
+ok(!AI.parseReport(wrapReport(badVerdict)).ok, 'accelerator.verdict 越界 → 判 FAIL');
+
+const badQuad = validReport(); badQuad.coreProblem.quadrant = 'spirit';
+ok(!AI.parseReport(wrapReport(badQuad)).ok, '已废弃的 spirit 维度 id → 判 FAIL');
+
+const badConf = validReport(); badConf.quadrants[0].confidence = 'very-high';
+ok(!AI.parseReport(wrapReport(badConf)).ok, 'confidence 越界 → 判 FAIL');
+
+/* 缺失的枚举字段补默认值，不判 FAIL */
+const sparse = validReport();
+delete sparse.metatype.strongest; delete sparse.archetype.mostEnergy;
+delete sparse.accelerator.verdict; delete sparse.coreProblem.quadrant;
+sparse.quadrants.forEach(q => { delete q.confidence; });
+const rSparse = AI.parseReport(wrapReport(sparse));
+ok(rSparse.ok, '枚举字段缺失时补默认值，不判 FAIL');
+eq(rSparse.data.accelerator.verdict, 'caution', '缺失 verdict 默认 caution');
+
+/* 规则引擎权威判定覆盖 AI 的改判 */
+const wrong = validReport();
+wrong.metatype.name = META_NAMES[1];
+wrong.archetype.name = ARCH_NAMES[1];
+wrong.accelerator.verdict = 'assess';
+wrong.coreProblem.quadrant = 'vocation';
+const over = AI.parseReport(wrapReport(wrong), {
+  metatype: META_NAMES[0], archetype: ARCH_NAMES[0], accelerator: 'hold', coreQuadrant: 'mind'
+});
+ok(over.ok, '传入规则引擎判定后仍能解析');
+eq(over.data.metatype.name, META_NAMES[0], 'AI 改判元类型被规则引擎覆盖');
+eq(over.data.archetype.name, ARCH_NAMES[0], 'AI 改判原型被规则引擎覆盖');
+eq(over.data.accelerator.verdict, 'hold', 'AI 改判加速器被规则引擎覆盖');
+eq(over.data.coreProblem.quadrant, 'mind', 'AI 改判核心象限被规则引擎覆盖');
+
+/* 维度 id 与 data.js 对齐 */
+eq(AI.QUADRANTS.join(','), 'mind,body,relationships,vocation', 'QUADRANTS 与 data.js 维度 id 一致');
+eq(AI.QUADRANT_CN.relationships, '关系与意义', 'QUADRANT_CN 覆盖 relationships');
+
 /* --------------------------------------- [9] 云函数代理：兑换码校验与转发 */
 async function proxyTests() {
-  console.log('\n[9] 云函数代理：兑换码校验');
+  console.log('\n[10] 云函数代理：兑换码校验');
   const nodePath = require('path');
   const file = nodePath.resolve(__dirname, '..', 'server', 'tencent-scf', 'index.js');
   const ENV_KEYS = ['ACCESS_CODES', 'ALLOW_ORIGIN', 'API_KEY', 'BASE_URL', 'MODEL', 'RATE_LIMIT'];
